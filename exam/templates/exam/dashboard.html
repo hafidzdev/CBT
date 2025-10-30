@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - CBT System{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+    <!-- Welcome Banner -->
+    {% include 'components/welcome_banner.html' %}
+
+    <!-- Stats Grid -->
+    {% include 'components/stats_grid.html' %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Left Column -->
+        <div class="lg:col-span-2 space-y-8">
+            <!-- Upcoming Exams -->
+            {% include 'components/upcoming_exams.html' %}
+
+            <!-- Recent Activity -->
+            {% include 'components/recent_activity.html' %}
+        </div>
+
+        <!-- Right Column -->
+        <div class="space-y-8">
+            <!-- Progress Overview -->
+            {% include 'components/progress_overview.html' %}
+
+            <!-- Quick Actions -->
+            {% include 'components/quick_actions.html' %}
+
+            <!-- Calendar Widget -->
+            {% include 'components/calendar_widget.html' %}
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add loading animation to cards
+        const cards = document.querySelectorAll('.card-hover');
+        cards.forEach((card, index) => {
+            card.style.animationDelay = `${index * 0.1}s`;
+        });
+    });
+</script>
+{% endblock %}

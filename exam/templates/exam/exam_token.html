@@ -1,0 +1,564 @@
+<!-- exam/templates/exam/exam_token.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Exam Access - CBT System{% endblock %}
+
+{% block page_title %}Exam Access Portal{% endblock %}
+
+{% block extra_head %}
+<style>
+    .token-card {
+        transition: all 0.3s ease;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .token-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    }
+    .exam-card {
+        transition: all 0.3s ease;
+        border-left: 4px solid transparent;
+    }
+    .exam-card:hover {
+        transform: translateX(5px);
+        border-left-color: #3b82f6;
+    }
+    .countdown-timer {
+        font-family: 'Courier New', monospace;
+        background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+    }
+    .token-input {
+        letter-spacing: 0.3em;
+        font-weight: bold;
+        font-size: 1.2em;
+    }
+    .pulse-animation {
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+    .feature-icon {
+        width: 60px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 15px;
+        margin: 0 auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-8">
+    <!-- Header Section -->
+    <div class="text-center mb-8">
+        <h1 class="text-4xl font-bold text-gray-800 mb-4">Exam Access Portal</h1>
+        <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+            Enter your exam token to start your assessment. Make sure you're prepared and in a quiet environment.
+        </p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Left Column - Token Input -->
+        <div class="lg:col-span-2 space-y-8">
+            <!-- Token Input Card -->
+            <div class="token-card rounded-2xl shadow-xl p-8 text-white">
+                <div class="text-center mb-6">
+                    <div class="w-20 h-20 bg-white bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-key text-white text-3xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold mb-2">Enter Exam Token</h2>
+                    <p class="text-blue-100">Get your token from your teacher or exam coordinator</p>
+                </div>
+
+                <form id="tokenForm" class="space-y-6">
+                    {% csrf_token %}
+                    
+                    <!-- Token Input -->
+                    <div class="space-y-4">
+                        <label for="examToken" class="block text-sm font-semibold text-blue-100">
+                            <i class="fas fa-ticket-alt mr-2"></i>Exam Token
+                        </label>
+                        <input 
+                            type="text" 
+                            id="examToken"
+                            name="exam_token"
+                            maxlength="12"
+                            placeholder="XXXX-XXXX-XXXX"
+                            class="token-input w-full px-6 py-4 bg-white bg-opacity-10 border border-blue-300 rounded-xl text-white text-center placeholder-blue-200 focus:outline-none focus:ring-4 focus:ring-blue-300 focus:bg-white focus:bg-opacity-20 transition duration-300"
+                            autocomplete="off"
+                        >
+                        <div class="flex justify-between text-sm text-blue-200">
+                            <span>Format: XXXX-XXXX-XXXX</span>
+                            <span id="tokenLength">0/12</span>
+                        </div>
+                    </div>
+
+                    <!-- Exam Selection (if multiple exams available) -->
+                    <div class="space-y-4">
+                        <label for="examSelect" class="block text-sm font-semibold text-blue-100">
+                            <i class="fas fa-file-alt mr-2"></i>Select Exam
+                        </label>
+                        <select 
+                            id="examSelect"
+                            name="exam_id"
+                            class="w-full px-6 py-4 bg-white bg-opacity-10 border border-blue-300 rounded-xl text-white focus:outline-none focus:ring-4 focus:ring-blue-300 transition duration-300"
+                        >
+                            <option value="" class="text-gray-800">Select an exam...</option>
+                            {% for exam in available_exams %}
+                            <option value="{{ exam.id }}" class="text-gray-800">
+                                {{ exam.title }} - {{ exam.subject.name|default:"General" }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="grid grid-cols-2 gap-4 pt-4">
+                        <button 
+                            type="button"
+                            id="validateToken"
+                            class="bg-green-500 text-white py-4 rounded-xl hover:bg-green-600 transition duration-300 font-semibold flex items-center justify-center space-x-2 transform hover:scale-105"
+                        >
+                            <i class="fas fa-check-circle"></i>
+                            <span>Validate Token</span>
+                        </button>
+                        <button 
+                            type="button"
+                            id="startExam"
+                            disabled
+                            class="bg-blue-500 text-white py-4 rounded-xl hover:bg-blue-600 transition duration-300 font-semibold flex items-center justify-center space-x-2 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <i class="fas fa-play-circle"></i>
+                            <span>Start Exam</span>
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Quick Actions -->
+                <div class="mt-6 pt-6 border-t border-blue-400">
+                    <div class="grid grid-cols-2 gap-4">
+                        <button class="bg-white bg-opacity-20 text-white py-3 rounded-lg hover:bg-opacity-30 transition duration-300 flex items-center justify-center space-x-2">
+                            <i class="fas fa-question-circle"></i>
+                            <span>Help</span>
+                        </button>
+                        <button class="bg-white bg-opacity-20 text-white py-3 rounded-lg hover:bg-opacity-30 transition duration-300 flex items-center justify-center space-x-2">
+                            <i class="fas fa-redo"></i>
+                            <span>Clear</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Exam Instructions -->
+            <div class="bg-white rounded-2xl shadow-lg p-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-info-circle text-blue-500 mr-3"></i>
+                    Exam Instructions
+                </h3>
+                <div class="space-y-4">
+                    <div class="flex items-start space-x-3">
+                        <div class="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                            <i class="fas fa-check text-green-500 text-xs"></i>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-gray-800">Before Starting</p>
+                            <p class="text-gray-600 text-sm">Ensure you have a stable internet connection and are in a quiet environment.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start space-x-3">
+                        <div class="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                            <i class="fas fa-check text-green-500 text-xs"></i>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-gray-800">During Exam</p>
+                            <p class="text-gray-600 text-sm">Do not refresh the page or close the browser window. Time will continue running.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start space-x-3">
+                        <div class="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                            <i class="fas fa-check text-green-500 text-xs"></i>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-gray-800">Submission</p>
+                            <p class="text-gray-600 text-sm">Submit your answers before time expires. Unsubmitted answers will be lost.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column - Information & Features -->
+        <div class="space-y-8">
+            <!-- System Check -->
+            <div class="bg-white rounded-2xl shadow-lg p-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-laptop-code text-green-500 mr-3"></i>
+                    System Check
+                </h3>
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <span class="text-gray-700">Internet Connection</span>
+                        <span class="text-green-500 font-semibold" id="connectionStatus">
+                            <i class="fas fa-wifi mr-1"></i>Stable
+                        </span>
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <span class="text-gray-700">Browser Support</span>
+                        <span class="text-green-500 font-semibold" id="browserStatus">
+                            <i class="fas fa-check-circle mr-1"></i>Supported
+                        </span>
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <span class="text-gray-700">Time Sync</span>
+                        <span class="text-green-500 font-semibold" id="timeStatus">
+                            <i class="fas fa-clock mr-1"></i>Synced
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Features -->
+            <div class="bg-white rounded-2xl shadow-lg p-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-rocket text-purple-500 mr-3"></i>
+                    Quick Access
+                </h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <a href="{% url 'exam:student_dashboard' %}" class="bg-blue-50 text-blue-700 p-4 rounded-xl hover:bg-blue-100 transition duration-300 text-center group">
+                        <div class="feature-icon bg-blue-100 group-hover:bg-blue-200 mb-2">
+                            <i class="fas fa-tachometer-alt text-blue-500 text-xl"></i>
+                        </div>
+                        <p class="font-semibold text-sm">Dashboard</p>
+                    </a>
+                    <a href="#" class="bg-green-50 text-green-700 p-4 rounded-xl hover:bg-green-100 transition duration-300 text-center group">
+                        <div class="feature-icon bg-green-100 group-hover:bg-green-200 mb-2">
+                            <i class="fas fa-history text-green-500 text-xl"></i>
+                        </div>
+                        <p class="font-semibold text-sm">Results</p>
+                    </a>
+                    <a href="#" class="bg-purple-50 text-purple-700 p-4 rounded-xl hover:bg-purple-100 transition duration-300 text-center group">
+                        <div class="feature-icon bg-purple-100 group-hover:bg-purple-200 mb-2">
+                            <i class="fas fa-chart-bar text-purple-500 text-xl"></i>
+                        </div>
+                        <p class="font-semibold text-sm">Progress</p>
+                    </a>
+                    <a href="#" class="bg-red-50 text-red-700 p-4 rounded-xl hover:bg-red-100 transition duration-300 text-center group">
+                        <div class="feature-icon bg-red-100 group-hover:bg-red-200 mb-2">
+                            <i class="fas fa-cog text-red-500 text-xl"></i>
+                        </div>
+                        <p class="font-semibold text-sm">Settings</p>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Countdown Timer -->
+            <div class="countdown-timer rounded-2xl shadow-lg p-6 text-white text-center">
+                <h3 class="text-lg font-bold mb-3 flex items-center justify-center">
+                    <i class="fas fa-clock mr-2"></i>
+                    Server Time
+                </h3>
+                <div class="text-3xl font-mono font-bold mb-2" id="serverTime">
+                    {{ current_time|date:"H:i:s" }}
+                </div>
+                <div class="text-sm opacity-80">
+                    {{ current_time|date:"l, F j, Y" }}
+                </div>
+            </div>
+
+            <!-- Support Card -->
+            <div class="bg-yellow-50 border border-yellow-200 rounded-2xl p-6">
+                <div class="flex items-start space-x-3">
+                    <div class="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <i class="fas fa-headset text-yellow-600"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-yellow-800 mb-1">Need Help?</h4>
+                        <p class="text-yellow-700 text-sm mb-3">
+                            Technical support is available during exam hours.
+                        </p>
+                        <div class="space-y-1 text-xs text-yellow-600">
+                            <p>📞 Support: (021) 1234-5678</p>
+                            <p>📧 Email: support@cbtsystem.edu</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Available Exams Section -->
+    <div class="bg-white rounded-2xl shadow-lg p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-bold text-gray-800 flex items-center">
+                <i class="fas fa-list-alt text-green-500 mr-3"></i>
+                Available Exams
+            </h3>
+            <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold">
+                {{ available_exams.count }} Exams
+            </span>
+        </div>
+
+        {% if available_exams %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for exam in available_exams %}
+            <div class="exam-card bg-gray-50 border border-gray-200 rounded-xl p-5 hover:bg-white hover:shadow-md transition duration-300">
+                <div class="flex items-start justify-between mb-3">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-file-alt text-white"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-gray-800 text-sm">{{ exam.title }}</h4>
+                            <p class="text-xs text-gray-600">{{ exam.subject.name|default:"General" }}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="space-y-2 mb-4">
+                    <div class="flex justify-between text-xs text-gray-600">
+                        <span>Duration:</span>
+                        <span class="font-semibold">{{ exam.duration_minutes }} min</span>
+                    </div>
+                    <div class="flex justify-between text-xs text-gray-600">
+                        <span>Questions:</span>
+                        <span class="font-semibold">{{ exam.questions.count }}</span>
+                    </div>
+                    <div class="flex justify-between text-xs text-gray-600">
+                        <span>Passing Score:</span>
+                        <span class="font-semibold text-green-600">{{ exam.passing_score }}%</span>
+                    </div>
+                </div>
+
+                <div class="flex space-x-2">
+                    <button 
+                        class="flex-1 bg-blue-600 text-white text-xs py-2 rounded-lg hover:bg-blue-700 transition duration-200 font-semibold use-exam-token"
+                        data-exam-id="{{ exam.id }}"
+                        data-exam-title="{{ exam.title }}"
+                    >
+                        Use Token
+                    </button>
+                    <button class="bg-gray-200 text-gray-700 px-3 rounded-lg hover:bg-gray-300 transition duration-200 text-xs">
+                        <i class="fas fa-info"></i>
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-8">
+            <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-clipboard-check text-gray-400 text-xl"></i>
+            </div>
+            <h4 class="text-lg font-semibold text-gray-600 mb-2">No Exams Available</h4>
+            <p class="text-gray-500">There are no exams available for you at the moment.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Token Validation Modal -->
+<div id="tokenModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-2xl p-6 max-w-md w-full">
+        <div class="text-center mb-6">
+            <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-check-circle text-green-500 text-2xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">Token Validated!</h3>
+            <p class="text-gray-600" id="modalMessage">You can now start your exam.</p>
+        </div>
+        
+        <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+            <div class="flex items-center text-green-800">
+                <i class="fas fa-info-circle mr-2"></i>
+                <span class="text-sm font-semibold">Ready to begin your assessment</span>
+            </div>
+        </div>
+
+        <div class="flex space-x-3">
+            <button id="closeModal" class="flex-1 bg-gray-500 text-white py-3 rounded-lg hover:bg-gray-600 transition duration-200 font-semibold">
+                Cancel
+            </button>
+            <button id="confirmStart" class="flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition duration-200 font-semibold">
+                Start Exam
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const tokenInput = document.getElementById('examToken');
+        const validateBtn = document.getElementById('validateToken');
+        const startBtn = document.getElementById('startExam');
+        const tokenLength = document.getElementById('tokenLength');
+        const tokenModal = document.getElementById('tokenModal');
+        const closeModal = document.getElementById('closeModal');
+        const confirmStart = document.getElementById('confirmStart');
+        const modalMessage = document.getElementById('modalMessage');
+        const examSelect = document.getElementById('examSelect');
+        const useTokenButtons = document.querySelectorAll('.use-exam-token');
+
+        // Format token input (XXXX-XXXX-XXXX)
+        tokenInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/[^a-zA-Z0-9]/g, '');
+            
+            if (value.length > 12) {
+                value = value.substring(0, 12);
+            }
+            
+            // Add dashes for formatting
+            if (value.length > 4) {
+                value = value.substring(0, 4) + '-' + value.substring(4);
+            }
+            if (value.length > 9) {
+                value = value.substring(0, 9) + '-' + value.substring(9);
+            }
+            
+            e.target.value = value.toUpperCase();
+            tokenLength.textContent = value.replace(/[^a-zA-Z0-9]/g, '').length + '/12';
+            
+            // Enable validate button if token is complete
+            validateBtn.disabled = value.replace(/[^a-zA-Z0-9]/g, '').length !== 12;
+        });
+
+        // Validate token
+        validateBtn.addEventListener('click', function() {
+            const token = tokenInput.value.replace(/-/g, '');
+            const examId = examSelect.value;
+            
+            if (token.length !== 12) {
+                showNotification('Please enter a valid 12-character token.', 'error');
+                return;
+            }
+            
+            if (!examId) {
+                showNotification('Please select an exam.', 'error');
+                return;
+            }
+            
+            // Simulate token validation (replace with actual API call)
+            simulateTokenValidation(token, examId);
+        });
+
+        // Use token from exam card
+        useTokenButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const examId = this.getAttribute('data-exam-id');
+                const examTitle = this.getAttribute('data-exam-title');
+                
+                examSelect.value = examId;
+                tokenInput.focus();
+                
+                showNotification(`Selected: ${examTitle}. Please enter your token.`, 'info');
+            });
+        });
+
+        // Simulate token validation
+        function simulateTokenValidation(token, examId) {
+            // Show loading state
+            validateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Validating...';
+            validateBtn.disabled = true;
+            
+            // Simulate API call delay
+            setTimeout(() => {
+                // For demo purposes, assume token is valid if it contains only alphanumeric characters
+                const isValid = /^[A-Z0-9]{12}$/.test(token);
+                
+                if (isValid) {
+                    // Token is valid
+                    modalMessage.textContent = 'Token validated successfully! You can now start your exam.';
+                    tokenModal.classList.remove('hidden');
+                    startBtn.disabled = false;
+                } else {
+                    showNotification('Invalid token. Please check and try again.', 'error');
+                }
+                
+                // Reset button
+                validateBtn.innerHTML = '<i class="fas fa-check-circle"></i><span>Validate Token</span>';
+                validateBtn.disabled = false;
+            }, 1500);
+        }
+
+        // Start exam
+        confirmStart.addEventListener('click', function() {
+            const token = tokenInput.value.replace(/-/g, '');
+            const examId = examSelect.value;
+            
+            // Redirect to exam page (replace with actual URL)
+            window.location.href = `/student/exam/${examId}/take/?token=${token}`;
+        });
+
+        // Close modal
+        closeModal.addEventListener('click', function() {
+            tokenModal.classList.add('hidden');
+        });
+
+        // Update server time
+        function updateServerTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('en-US', { 
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            document.getElementById('serverTime').textContent = timeString;
+        }
+        
+        setInterval(updateServerTime, 1000);
+
+        // Notification system
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg text-white font-semibold z-50 transform transition-transform duration-300 ${
+                type === 'error' ? 'bg-red-500' : 
+                type === 'success' ? 'bg-green-500' : 'bg-blue-500'
+            }`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 5000);
+        }
+
+        // System check simulation
+        function performSystemCheck() {
+            // Simulate system checks
+            setTimeout(() => {
+                document.getElementById('connectionStatus').innerHTML = '<i class="fas fa-wifi mr-1"></i>Stable';
+                document.getElementById('browserStatus').innerHTML = '<i class="fas fa-check-circle mr-1"></i>Supported';
+                document.getElementById('timeStatus').innerHTML = '<i class="fas fa-clock mr-1"></i>Synced';
+            }, 1000);
+        }
+
+        performSystemCheck();
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Ctrl + Enter to validate token
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                validateBtn.click();
+            }
+            
+            // Escape to clear token
+            if (e.key === 'Escape') {
+                tokenInput.value = '';
+                tokenInput.focus();
+            }
+        });
+
+        console.log('Exam Token Portal initialized');
+    });
+</script>
+{% endblock %}

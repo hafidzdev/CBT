@@ -1,0 +1,97 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block content %}
+<div class="dashboard-stats">
+    <div class="stat-card">
+        <h3>Total Users</h3>
+        <div class="number">{{ total_users }}</div>
+        <p>Registered in system</p>
+    </div>
+    <div class="stat-card success">
+        <h3>Total Exams</h3>
+        <div class="number">{{ total_exams }}</div>
+        <p>Created exams</p>
+    </div>
+    <div class="stat-card warning">
+        <h3>Exam Sessions</h3>
+        <div class="number">{{ total_sessions }}</div>
+        <p>{{ active_sessions }} active</p>
+    </div>
+    <div class="stat-card danger">
+        <h3>Performance</h3>
+        <div class="number">{{ avg_score }}%</div>
+        <p>{{ pass_rate }}% pass rate</p>
+    </div>
+</div>
+
+<div class="recent-activity">
+    <h2>Recent Exams</h2>
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="background: #f8fafc;">
+                <th style="padding: 12px; text-align: left;">Title</th>
+                <th style="padding: 12px; text-align: left;">Type</th>
+                <th style="padding: 12px; text-align: left;">Status</th>
+                <th style="padding: 12px; text-align: left;">Created</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for exam in recent_exams %}
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+                <td style="padding: 12px;">{{ exam.title }}</td>
+                <td style="padding: 12px;">{{ exam.get_exam_type_display }}</td>
+                <td style="padding: 12px;">
+                    <span style="padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; 
+                                background: {% if exam.status == 'published' %}#10b98120{% else %}#f59e0b20{% endif %};
+                                color: {% if exam.status == 'published' %}#10b981{% else %}#f59e0b{% endif %};">
+                        {{ exam.get_status_display }}
+                    </span>
+                </td>
+                <td style="padding: 12px;">{{ exam.created_at|date:"M d, Y" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="recent-activity" style="margin-top: 2rem;">
+    <h2>Recent Exam Sessions</h2>
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="background: #f8fafc;">
+                <th style="padding: 12px; text-align: left;">User</th>
+                <th style="padding: 12px; text-align: left;">Exam</th>
+                <th style="padding: 12px; text-align: left;">Score</th>
+                <th style="padding: 12px; text-align: left;">Status</th>
+                <th style="padding: 12px; text-align: left;">Started</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for session in recent_sessions %}
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+                <td style="padding: 12px;">{{ session.user.username }}</td>
+                <td style="padding: 12px;">{{ session.exam.title }}</td>
+                <td style="padding: 12px;">
+                    {% if session.score %}
+                    <span style="font-weight: 600; color: {% if session.score >= 60 %}#10b981{% else %}#ef4444{% endif %};">
+                        {{ session.score }}%
+                    </span>
+                    {% else %}
+                    <span style="color: #6b7280;">N/A</span>
+                    {% endif %}
+                </td>
+                <td style="padding: 12px;">
+                    <span style="padding: 4px 8px; border-radius: 12px; font-size: 0.75rem;
+                                background: {% if session.status == 'completed' %}#10b98120{% else %}#f59e0b20{% endif %};
+                                color: {% if session.status == 'completed' %}#10b981{% else %}#f59e0b{% endif %};">
+                        {{ session.get_status_display }}
+                    </span>
+                </td>
+                <td style="padding: 12px;">{{ session.start_time|date:"M d, H:i" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

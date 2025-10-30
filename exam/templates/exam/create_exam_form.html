@@ -1,0 +1,317 @@
+<!-- exam/templates/exam/create_exam_form.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Create Exam - CBT System{% endblock %}
+
+{% block page_title %}Create New Exam{% endblock %}
+
+{% block extra_head %}
+<style>
+    .token-input {
+        font-family: 'Courier New', monospace;
+        font-weight: bold;
+        letter-spacing: 2px;
+    }
+    .token-preview {
+        background: linear-gradient(45deg, #667eea, #764ba2);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <div class="bg-white rounded-2xl shadow-lg p-8">
+        <div class="mb-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">Create New Exam</h2>
+            <p class="text-gray-600">Fill in the exam details and configure access settings</p>
+        </div>
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            {% if form.errors %}
+            <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                <div class="flex items-center text-red-800">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    <span class="font-semibold">Please correct the errors below:</span>
+                </div>
+                <ul class="list-disc list-inside text-red-700 mt-2 text-sm">
+                    {% for field in form %}
+                        {% for error in field.errors %}
+                            <li>{{ field.label }}: {{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                    {% for error in form.non_field_errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <!-- Basic Information -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ form.title.label }} *</label>
+                    {{ form.title }}
+                    {% if form.title.help_text %}
+                    <p class="text-xs text-gray-500 mt-1">{{ form.title.help_text }}</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ form.exam_type.label }} *</label>
+                    {{ form.exam_type }}
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ form.description.label }}</label>
+                    {{ form.description }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ form.subject.label }}</label>
+                    {{ form.subject }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ form.status.label }} *</label>
+                    {{ form.status }}
+                    {% if form.status.help_text %}
+                    <p class="text-xs text-gray-500 mt-1">{{ form.status.help_text }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Timing Section -->
+            <div class="border-t border-gray-200 pt-8 mb-8">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Timing Settings</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ form.start_time.label }} *</label>
+                        {{ form.start_time }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ form.end_time.label }} *</label>
+                        {{ form.end_time }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ form.duration_minutes.label }} *</label>
+                        {{ form.duration_minutes }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ form.result_publish_time.label }}</label>
+                        {{ form.result_publish_time }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Token Settings -->
+            <div class="border-t border-gray-200 pt-8 mb-8">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-key mr-2 text-blue-500"></i>
+                    Exam Access Token
+                </h3>
+                
+                <div class="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="flex items-start space-x-3 mb-4">
+                                {{ form.auto_generate_token }}
+                                <div>
+                                    <span class="block text-sm font-medium text-gray-700">{{ form.auto_generate_token.label }}</span>
+                                    <p class="text-xs text-gray-500 mt-1">{{ form.auto_generate_token.help_text }}</p>
+                                </div>
+                            </label>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">{{ form.custom_token.label }}</label>
+                            {{ form.custom_token }}
+                            {% if form.custom_token.help_text %}
+                            <p class="text-xs text-gray-500 mt-1">{{ form.custom_token.help_text }}</p>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">{{ form.token_expiry.label }}</label>
+                            {{ form.token_expiry }}
+                            {% if form.token_expiry.help_text %}
+                            <p class="text-xs text-gray-500 mt-1">{{ form.token_expiry.help_text }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Token Preview -->
+                    <div id="tokenPreview" class="mt-6 p-4 bg-white rounded-lg border border-blue-300 hidden">
+                        <h4 class="font-semibold text-gray-800 mb-3">Token Preview:</h4>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-4">
+                                <code class="token-preview text-2xl font-bold text-white px-4 py-3 rounded-lg" id="previewToken"></code>
+                                <div>
+                                    <p class="text-sm text-gray-600">This token will be generated when exam is published</p>
+                                    <p class="text-xs text-gray-500">Students will use this to access the exam</p>
+                                </div>
+                            </div>
+                            <button type="button" onclick="copyToken()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-200">
+                                <i class="fas fa-copy mr-2"></i>Copy
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Exam Settings -->
+            <div class="border-t border-gray-200 pt-8 mb-8">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Exam Settings</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ form.passing_score.label }} *</label>
+                        {{ form.passing_score }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ form.max_attempts.label }} *</label>
+                        {{ form.max_attempts }}
+                    </div>
+                    
+                    <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <label class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                            {{ form.shuffle_questions }}
+                            <span class="text-sm font-medium text-gray-700">{{ form.shuffle_questions.label }}</span>
+                        </label>
+                        <label class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                            {{ form.shuffle_choices }}
+                            <span class="text-sm font-medium text-gray-700">{{ form.shuffle_choices.label }}</span>
+                        </label>
+                        <label class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                            {{ form.show_result_immediately }}
+                            <span class="text-sm font-medium text-gray-700">{{ form.show_result_immediately.label }}</span>
+                        </label>
+                        <label class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                            {{ form.allow_back_navigation }}
+                            <span class="text-sm font-medium text-gray-700">{{ form.allow_back_navigation.label }}</span>
+                        </label>
+                        <label class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                            {{ form.require_webcam }}
+                            <span class="text-sm font-medium text-gray-700">{{ form.require_webcam.label }}</span>
+                        </label>
+                        <label class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                            {{ form.require_microphone }}
+                            <span class="text-sm font-medium text-gray-700">{{ form.require_microphone.label }}</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Access Control -->
+            <div class="border-t border-gray-200 pt-8 mb-8">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Access Control</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ form.allowed_departments.label }}</label>
+                        {{ form.allowed_departments }}
+                        <p class="text-xs text-gray-500 mt-1">Leave empty to allow all departments</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ form.allowed_users.label }}</label>
+                        {{ form.allowed_users }}
+                        <p class="text-xs text-gray-500 mt-1">Leave empty to allow all users in selected departments</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex space-x-4 pt-8 border-t border-gray-200">
+                <button type="submit" class="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition duration-200 font-semibold">
+                    <i class="fas fa-save mr-2"></i>Create Exam
+                </button>
+                <a href="{% url 'exam:teacher_dashboard' %}" class="bg-gray-500 text-white px-8 py-3 rounded-lg hover:bg-gray-600 transition duration-200 font-semibold">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function generateRandomToken() {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let token = '';
+        for (let i = 0; i < 6; i++) {
+            token += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return token;
+    }
+
+    function updateTokenPreview() {
+        const autoGenerate = document.querySelector('#id_auto_generate_token').checked;
+        const customToken = document.querySelector('#id_custom_token').value.toUpperCase();
+        const status = document.querySelector('#id_status').value;
+        const preview = document.getElementById('tokenPreview');
+        const previewToken = document.getElementById('previewToken');
+        
+        if (status === 'published') {
+            if (customToken && customToken.length === 6) {
+                previewToken.textContent = customToken;
+                preview.classList.remove('hidden');
+            } else if (autoGenerate) {
+                previewToken.textContent = generateRandomToken();
+                preview.classList.remove('hidden');
+            } else {
+                preview.classList.add('hidden');
+            }
+        } else {
+            preview.classList.add('hidden');
+        }
+    }
+
+    function copyToken() {
+        const token = document.getElementById('previewToken').textContent;
+        navigator.clipboard.writeText(token).then(() => {
+            // Show temporary success message
+            const btn = event.target;
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check mr-2"></i>Copied!';
+            btn.classList.remove('bg-blue-600');
+            btn.classList.add('bg-green-600');
+            
+            setTimeout(() => {
+                btn.innerHTML = originalHtml;
+                btn.classList.remove('bg-green-600');
+                btn.classList.add('bg-blue-600');
+            }, 2000);
+        });
+    }
+
+    // Event listeners
+    document.querySelector('#id_auto_generate_token').addEventListener('change', function() {
+        const customTokenField = document.querySelector('#id_custom_token');
+        if (this.checked) {
+            customTokenField.value = '';
+            customTokenField.disabled = true;
+        } else {
+            customTokenField.disabled = false;
+        }
+        updateTokenPreview();
+    });
+
+    document.querySelector('#id_custom_token').addEventListener('input', function(e) {
+        // Format input to uppercase and limit to 6 characters
+        let value = e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+        if (value.length > 6) value = value.substring(0, 6);
+        e.target.value = value;
+        updateTokenPreview();
+    });
+
+    document.querySelector('#id_status').addEventListener('change', updateTokenPreview);
+    
+    // Initialize on load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set initial state of custom token field
+        const autoGenerate = document.querySelector('#id_auto_generate_token').checked;
+        const customTokenField = document.querySelector('#id_custom_token');
+        if (autoGenerate) {
+            customTokenField.disabled = true;
+        }
+        updateTokenPreview();
+    });
+</script>
+{% endblock %}

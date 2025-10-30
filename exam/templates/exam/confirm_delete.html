@@ -1,0 +1,99 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'admin/css/forms.css' %}">
+    <style>
+        .delete-confirmation {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+        }
+        .delete-warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .object-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-left: 4px solid #dc3545;
+            margin: 15px 0;
+        }
+        .submit-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            text-decoration: none;
+            display: inline-block;
+        }
+    </style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'custom_admin:index' %}">{% trans 'Home' %}</a>
+    &rsaquo; <a href="{% url 'custom_admin:exam_question_changelist' %}">{% trans 'Questions' %}</a>
+    &rsaquo; {% trans 'Delete' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="delete-confirmation">
+    <h1>{% trans "Delete Question" %}</h1>
+    
+    <div class="delete-warning">
+        <strong>⚠ {% trans "Warning:" %}</strong>
+        {% trans "You are about to delete the following question. This action cannot be undone." %}
+    </div>
+
+    <div class="object-info">
+        <h3>{{ object.text|truncatewords:20 }}</h3>
+        <p><strong>{% trans "Type:" %}</strong> {{ object.get_question_type_display }}</p>
+        <p><strong>{% trans "Exam:" %}</strong> {{ object.exam.title }}</p>
+        <p><strong>{% trans "Points:" %}</strong> {{ object.points }}</p>
+        <p><strong>{% trans "Difficulty:" %}</strong> {{ object.get_difficulty_display }}</p>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        
+        {% if is_popup %}
+            <input type="hidden" name="{{ is_popup_var }}" value="1">
+        {% endif %}
+        
+        {% if to_field %}
+            <input type="hidden" name="{{ to_field_var }}" value="{{ to_field }}">
+        {% endif %}
+
+        <div class="submit-row">
+            <input type="submit" value="{% trans 'Yes, I\'m sure' %}" class="btn-danger">
+            <a href="{% url 'custom_admin:exam_question_changelist' %}" class="btn-secondary">
+                {% trans 'No, take me back' %}
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,500 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ exam.title }} - CBT System{% endblock %}
+
+{% block page_title %}{{ exam.title }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    .exam-container {
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+    .question-card {
+        transition: all 0.3s ease;
+        border-left: 4px solid transparent;
+    }
+    .question-card:hover {
+        border-left-color: #3b82f6;
+        transform: translateX(5px);
+    }
+    .question-card.active {
+        border-left-color: #3b82f6;
+        background-color: #f8fafc;
+    }
+    .option-label {
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    .option-label:hover {
+        background-color: #f1f5f9;
+        transform: translateY(-1px);
+    }
+    .option-input:checked + .option-content {
+        background-color: #dbeafe;
+        border-color: #3b82f6;
+    }
+    .timer-warning {
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    .navigation-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+        margin: 2px;
+        cursor: pointer;
+    }
+    .navigation-dot.answered {
+        background-color: #10b981;
+    }
+    .navigation-dot.current {
+        background-color: #3b82f6;
+        transform: scale(1.2);
+    }
+    .navigation-dot.unanswered {
+        background-color: #6b7280;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto" x-data="examApp()" x-init="init()">
+    <!-- Loading State -->
+    <div x-show="isLoading" class="fixed inset-0 bg-white bg-opacity-90 flex items-center justify-center z-50">
+        <div class="text-center">
+            <div class="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p class="text-gray-600 font-semibold">Loading exam...</p>
+        </div>
+    </div>
+
+    <!-- Error State -->
+    <div x-show="showError" class="fixed inset-0 bg-white flex items-center justify-center z-50">
+        <div class="text-center max-w-md">
+            <div class="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i class="fas fa-exclamation-triangle text-red-500 text-3xl"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-4" x-text="errorTitle"></h2>
+            <p class="text-gray-600 mb-6" x-text="errorMessage"></p>
+            <a href="{% url 'my_exams' %}" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition duration-200 font-semibold">
+                Back to My Exams
+            </a>
+        </div>
+    </div>
+
+    <!-- Konten exam yang sudah ada - Hanya ditampilkan jika tidak loading dan tidak error -->
+    <div x-show="!isLoading && !showError">
+        <!-- Exam Header -->
+        <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                <div class="flex-1">
+                    <h1 class="text-2xl font-bold text-gray-800 mb-2">{{ exam.title }}</h1>
+                    <p class="text-gray-600 mb-4">{{ exam.description }}</p>
+                    <div class="flex flex-wrap gap-4 text-sm text-gray-500">
+                        <div class="flex items-center">
+                            <i class="fas fa-clock mr-2 text-blue-500"></i>
+                            <span>Duration: {{ exam.duration_minutes }} minutes</span>
+                        </div>
+                        <div class="flex items-center">
+                            <i class="fas fa-list-ol mr-2 text-green-500"></i>
+                            <span>Questions: {{ exam.questions.count }}</span>
+                        </div>
+                        <div class="flex items-center">
+                            <i class="fas fa-percentage mr-2 text-purple-500"></i>
+                            <span>Passing Score: {{ exam.passing_score }}%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Timer -->
+                <div class="bg-red-50 border border-red-200 rounded-xl p-4 text-center min-w-32">
+                    <div class="text-sm text-red-600 font-semibold mb-1">TIME REMAINING</div>
+                    <div class="text-2xl font-bold text-red-600" 
+                         :class="{ 'timer-warning': remainingTime <= 300 }"
+                         x-text="formatTime(remainingTime)">
+                        {{ exam.duration_minutes }}:00
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <!-- Navigation Sidebar -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-2xl shadow-lg p-6 sticky top-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-compass mr-2 text-blue-500"></i>
+                        Exam Navigation
+                    </h3>
+                    
+                    <!-- Progress Summary -->
+                    <div class="mb-6 p-4 bg-gray-50 rounded-lg">
+                        <div class="flex justify-between text-sm mb-2">
+                            <span class="text-gray-600">Progress:</span>
+                            <span class="font-semibold" x-text="`${answeredCount}/{{ exam.questions.count }}`"></span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-green-500 h-2 rounded-full transition-all duration-300" 
+                                 :style="`width: ${(answeredCount / {{ exam.questions.count }}) * 100}%`"></div>
+                        </div>
+                    </div>
+
+                    <!-- Question Dots -->
+                    <div class="grid grid-cols-5 gap-2 mb-6">
+                        <template x-for="(question, index) in questions" :key="question.id">
+                            <div class="navigation-dot text-center"
+                                 :class="{
+                                     'answered': question.answered,
+                                     'current': currentQuestionIndex === index,
+                                     'unanswered': !question.answered
+                                 }"
+                                 @click="goToQuestion(index)"
+                                 :title="`Question ${index + 1}`">
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Exam Controls -->
+                    <div class="space-y-3">
+                        <button @click="previousQuestion" 
+                                class="w-full bg-gray-500 text-white py-2 rounded-lg hover:bg-gray-600 transition duration-200 font-semibold flex items-center justify-center"
+                                :disabled="currentQuestionIndex === 0">
+                            <i class="fas fa-arrow-left mr-2"></i> Previous
+                        </button>
+                        <button @click="nextQuestion" 
+                                class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition duration-200 font-semibold flex items-center justify-center"
+                                :disabled="currentQuestionIndex === questions.length - 1">
+                            Next <i class="fas fa-arrow-right ml-2"></i>
+                        </button>
+                        <button @click="showSubmitModal = true" 
+                                class="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition duration-200 font-semibold flex items-center justify-center">
+                            <i class="fas fa-paper-plane mr-2"></i> Submit Exam
+                        </button>
+                    </div>
+
+                    <!-- Quick Stats -->
+                    <div class="mt-6 pt-4 border-t border-gray-200">
+                        <div class="flex justify-between text-sm text-gray-600 mb-2">
+                            <span>Answered:</span>
+                            <span class="font-semibold text-green-600" x-text="answeredCount"></span>
+                        </div>
+                        <div class="flex justify-between text-sm text-gray-600">
+                            <span>Remaining:</span>
+                            <span class="font-semibold text-red-600" x-text="{{ exam.questions.count }} - answeredCount"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Questions Area -->
+            <div class="lg:col-span-3">
+                <div class="bg-white rounded-2xl shadow-lg p-6">
+                    <!-- Question Progress -->
+                    <div class="flex justify-between items-center mb-6">
+                        <div class="text-sm text-gray-500">
+                            Question <span x-text="currentQuestionIndex + 1"></span> of {{ exam.questions.count }}
+                        </div>
+                        <div class="flex space-x-2">
+                            <button @click="flagQuestion" 
+                                    class="px-3 py-1 rounded-lg text-sm font-semibold transition duration-200"
+                                    :class="currentQuestion.flagged ? 'bg-yellow-500 text-white' : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'">
+                                <i class="fas fa-flag mr-1"></i>
+                                <span x-text="currentQuestion.flagged ? 'Unflag' : 'Flag'"></span>
+                            </button>
+                            <button class="bg-gray-100 text-gray-700 px-3 py-1 rounded-lg text-sm font-semibold hover:bg-gray-200 transition duration-200">
+                                <i class="fas fa-comment mr-1"></i> Report
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Current Question -->
+                    <div class="question-card active p-6 border-2 border-gray-100 rounded-xl mb-6">
+                        <div class="flex items-start mb-6">
+                            <span class="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-4 flex-shrink-0">
+                                <span x-text="currentQuestionIndex + 1"></span>
+                            </span>
+                            <div class="flex-1">
+                                <h3 class="text-lg font-semibold text-gray-800 mb-4 leading-relaxed" 
+                                    x-html="currentQuestion.text"></h3>
+                                
+                                <!-- Question Image (if any) -->
+                                <template x-if="currentQuestion.image">
+                                    <div class="mb-4">
+                                        <img :src="currentQuestion.image" alt="Question image" class="max-w-full rounded-lg border">
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Options -->
+                        <div class="ml-12 space-y-3">
+                            <template x-for="(option, optIndex) in currentQuestion.options" :key="option.id">
+                                <label class="option-label block">
+                                    <input type="radio" 
+                                           :name="'question_' + currentQuestion.id" 
+                                           :value="option.id" 
+                                           class="option-input hidden"
+                                           @change="saveAnswer(option.id)">
+                                    <div class="option-content border-2 border-gray-200 rounded-lg p-4 transition-all duration-200">
+                                        <div class="flex items-center">
+                                            <div class="w-8 h-8 border-2 border-gray-300 rounded-full flex items-center justify-center mr-4 flex-shrink-0">
+                                                <span class="text-sm font-semibold text-gray-600" 
+                                                      x-text="String.fromCharCode(65 + optIndex)"></span>
+                                            </div>
+                                            <span class="text-gray-700" x-html="option.text"></span>
+                                        </div>
+                                    </div>
+                                </label>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Navigation Buttons -->
+                    <div class="flex justify-between pt-4 border-t border-gray-200">
+                        <button @click="previousQuestion" 
+                                class="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition duration-200 font-semibold flex items-center"
+                                :disabled="currentQuestionIndex === 0">
+                            <i class="fas fa-arrow-left mr-2"></i> Previous Question
+                        </button>
+                        <button @click="nextQuestion" 
+                                class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition duration-200 font-semibold flex items-center"
+                                :disabled="currentQuestionIndex === questions.length - 1">
+                            Next Question <i class="fas fa-arrow-right ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit Confirmation Modal -->
+        <div x-show="showSubmitModal" 
+             class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100">
+            <div class="bg-white rounded-2xl p-6 max-w-md w-full">
+                <div class="text-center mb-6">
+                    <div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-exclamation-triangle text-yellow-500 text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">Submit Exam?</h3>
+                    <p class="text-gray-600">
+                        You have answered <span x-text="answeredCount" class="font-semibold"></span> out of 
+                        {{ exam.questions.count }} questions. Are you sure you want to submit?
+                    </p>
+                </div>
+                
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                    <div class="flex items-center text-yellow-800">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        <span class="text-sm font-semibold">Once submitted, you cannot change your answers.</span>
+                    </div>
+                </div>
+
+                <div class="flex space-x-3">
+                    <button @click="showSubmitModal = false" 
+                            class="flex-1 bg-gray-500 text-white py-3 rounded-lg hover:bg-gray-600 transition duration-200 font-semibold">
+                        Cancel
+                    </button>
+                    <button @click="submitExam" 
+                            class="flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition duration-200 font-semibold">
+                        Yes, Submit Exam
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Time Up Modal -->
+        <div x-show="showTimeUpModal" 
+             class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100">
+            <div class="bg-white rounded-2xl p-6 max-w-md w-full text-center">
+                <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-clock text-red-500 text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-800 mb-2">Time's Up!</h3>
+                <p class="text-gray-600 mb-6">Your exam time has ended. Your answers will be submitted automatically.</p>
+                <button @click="submitExam" 
+                        class="w-full bg-red-600 text-white py-3 rounded-lg hover:bg-red-700 transition duration-200 font-semibold">
+                    View Results
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+<script>
+    function examApp() {
+        return {
+            questions: {{ questions_data|safe }},
+            currentQuestionIndex: 0,
+            remainingTime: {{ exam.duration_minutes }} * 60,
+            showSubmitModal: false,
+            showTimeUpModal: false,
+            examSessionId: null,
+            isLoading: true,
+            showError: false,
+            errorTitle: '',
+            errorMessage: '',
+            
+            get currentQuestion() {
+                return this.questions[this.currentQuestionIndex];
+            },
+            
+            get answeredCount() {
+                return this.questions.filter(q => q.answered).length;
+            },
+            
+            async init() {
+                try {
+                    await this.validateExam();
+                    this.startTimer();
+                    this.loadProgress();
+                    this.autoSave();
+                    this.isLoading = false;
+                } catch (error) {
+                    this.showError = true;
+                    this.errorTitle = 'Exam Error';
+                    this.errorMessage = error.message;
+                    this.isLoading = false;
+                }
+            },
+            
+            async validateExam() {
+                // Validasi waktu
+                const now = new Date();
+                const startTime = new Date('{{ exam.start_time|date:"c" }}');
+                const endTime = new Date('{{ exam.end_time|date:"c" }}');
+                
+                if (now < startTime) {
+                    throw new Error('This exam has not started yet.');
+                }
+                
+                if (now > endTime) {
+                    throw new Error('This exam has already ended.');
+                }
+            },
+            
+            startTimer() {
+                const timer = setInterval(() => {
+                    if (this.remainingTime <= 0) {
+                        clearInterval(timer);
+                        this.showTimeUpModal = true;
+                        return;
+                    }
+                    this.remainingTime--;
+                }, 1000);
+            },
+            
+            formatTime(seconds) {
+                const minutes = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            },
+            
+            goToQuestion(index) {
+                this.currentQuestionIndex = index;
+            },
+            
+            nextQuestion() {
+                if (this.currentQuestionIndex < this.questions.length - 1) {
+                    this.currentQuestionIndex++;
+                }
+            },
+            
+            previousQuestion() {
+                if (this.currentQuestionIndex > 0) {
+                    this.currentQuestionIndex--;
+                }
+            },
+            
+            flagQuestion() {
+                this.questions[this.currentQuestionIndex].flagged = 
+                    !this.questions[this.currentQuestionIndex].flagged;
+                this.saveProgress();
+            },
+            
+            saveAnswer(optionId) {
+                this.questions[this.currentQuestionIndex].answered = true;
+                this.questions[this.currentQuestionIndex].selected_option = optionId;
+                this.saveProgress();
+            },
+            
+            saveProgress() {
+                const progress = {
+                    answers: this.questions.map(q => ({
+                        question_id: q.id,
+                        option_id: q.selected_option
+                    })).filter(a => a.option_id),
+                    current_question: this.currentQuestionIndex,
+                    time_remaining: this.remainingTime
+                };
+                localStorage.setItem('exam_progress_{{ exam.id }}', JSON.stringify(progress));
+            },
+            
+            loadProgress() {
+                const saved = localStorage.getItem('exam_progress_{{ exam.id }}');
+                if (saved) {
+                    const progress = JSON.parse(saved);
+                    progress.answers.forEach(answer => {
+                        const question = this.questions.find(q => q.id === answer.question_id);
+                        if (question) {
+                            question.answered = true;
+                            question.selected_option = answer.option_id;
+                        }
+                    });
+                    this.currentQuestionIndex = progress.current_question || 0;
+                    // Don't load saved time to prevent cheating
+                }
+            },
+            
+            autoSave() {
+                setInterval(() => {
+                    this.saveProgress();
+                }, 30000); // Auto-save every 30 seconds
+            },
+            
+            async submitExam() {
+                const answers = this.questions
+                    .filter(q => q.selected_option)
+                    .map(q => ({
+                        question_id: q.id,
+                        option_id: q.selected_option
+                    }));
+                
+                try {
+                    const response = await fetch('{% url "submit_exam" exam.id %}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({
+                            answers: answers,
+                            time_spent: {{ exam.duration_minutes }} * 60 - this.remainingTime
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        localStorage.removeItem('exam_progress_{{ exam.id }}');
+                        window.location.href = '{% url "exam_results" 0 %}'.replace('0', (await response.json()).session_id);
+                    }
+                } catch (error) {
+                    console.error('Error submitting exam:', error);
+                    alert('Error submitting exam. Please try again.');
+                }
+            }
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,109 @@
+<!-- USER MENU (ATAS SIDEBAR) -->
+<div class="p-4 border-b border-blue-700 relative">
+  <div class="flex items-center justify-between cursor-pointer" onclick="toggleUserMenu()">
+    <!-- User Info -->
+    <div class="flex items-center space-x-3">
+      <div class="w-10 h-10 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full flex items-center justify-center text-sm font-bold">
+        {{ user.username|first|upper }}
+      </div>
+      <div>
+        <p class="font-semibold text-sm text-white">{{ user.get_full_name|default:user.username }}</p>
+        <p class="text-xs text-blue-300">Student</p>
+      </div>
+    </div>
+    <i class="fas fa-chevron-down text-blue-300 text-xs transition-transform duration-300" id="arrowIcon"></i>
+  </div>
+
+  <!-- Dropdown Menu -->
+  <div id="userMenuDropdown" class="hidden mt-3 bg-blue-800/40 border border-blue-700 rounded-lg p-3 space-y-2 text-sm shadow-lg">
+    <div class="text-blue-100 border-b border-blue-700 pb-2">
+      <p class="text-xs text-blue-300 mb-1">Email</p>
+      <p class="font-medium truncate">{{ user.email|default:"No email set" }}</p>
+    </div>
+    <div class="text-blue-100 border-b border-blue-700 pb-2">
+      <p class="text-xs text-blue-300 mb-1">User ID</p>
+      <p class="font-medium">{{ user.id }}</p>
+    </div>
+    <div class="text-blue-100 border-b border-blue-700 pb-2">
+      <p class="text-xs text-blue-300 mb-1">Joined</p>
+      <p class="font-medium">{{ user.date_joined|date:"d M Y" }}</p>
+    </div>
+    <div class="pt-1">
+      <button onclick="toggleAccountModal(true)"
+              class="w-full bg-gradient-to-r from-cyan-500/30 to-blue-500/30 hover:from-cyan-400 hover:to-blue-600 text-white px-3 py-1.5 rounded-md flex items-center justify-center space-x-2 transition duration-200">
+        <i class="fas fa-user-cog text-xs"></i>
+        <span>View Account Details</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ACCOUNT INFO -->
+<div id="accountModal"
+     class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+  <div class="bg-gradient-to-br from-blue-900 to-blue-800 text-white rounded-2xl shadow-2xl w-[90%] max-w-md p-6 relative border border-blue-700/40">
+    <button onclick="toggleAccountModal(false)"
+            class="absolute top-3 right-3 text-blue-300 hover:text-white text-lg">
+      <i class="fas fa-times"></i>
+    </button>
+
+    <h2 class="text-lg font-semibold mb-4 border-b border-blue-700 pb-2">
+      Account Information
+    </h2>
+
+    <div class="space-y-3 text-sm">
+      <div>
+        <label class="block text-blue-200 mb-1">Full Name</label>
+        <div class="bg-blue-950 border border-blue-700 rounded-md p-2 text-white">
+          {{ user.get_full_name|default:user.username }}
+        </div>
+      </div>
+      <div>
+        <label class="block text-blue-200 mb-1">Email</label>
+        <div class="bg-blue-950 border border-blue-700 rounded-md p-2 text-white">
+          {{ user.email|default:"No email set" }}
+        </div>
+      </div>
+      <div>
+        <label class="block text-blue-200 mb-1">Username</label>
+        <div class="bg-blue-950 border border-blue-700 rounded-md p-2 text-white">
+          {{ user.username }}
+        </div>
+      </div>
+      <div>
+        <label class="block text-blue-200 mb-1">Joined On</label>
+        <div class="bg-blue-950 border border-blue-700 rounded-md p-2 text-white">
+          {{ user.date_joined|date:"d F Y, H:i" }}
+        </div>
+      </div>
+      <div>
+        <label class="block text-blue-200 mb-1">Account Role</label>
+        <div class="bg-blue-950 border border-blue-700 rounded-md p-2 text-white">
+          Student
+        </div>
+      </div>
+    </div>
+
+    <div class="pt-4 text-right">
+      <button onclick="toggleAccountModal(false)" 
+              class="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 px-4 py-1.5 rounded-md text-sm font-semibold">
+        Close
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- JAVASCRIPT -->
+<script>
+function toggleUserMenu() {
+  const dropdown = document.getElementById('userMenuDropdown');
+  const arrow = document.getElementById('arrowIcon');
+  dropdown.classList.toggle('hidden');
+  arrow.classList.toggle('rotate-180');
+}
+
+function toggleAccountModal(show) {
+  const modal = document.getElementById('accountModal');
+  modal.classList.toggle('hidden', !show);
+}
+</script>
