@@ -6,7 +6,7 @@ from django.utils import timezone
 from django.db.models import Count, Avg, Q,F
 from datetime import timedelta
 from django.db import models
-from .models import Exam, ExamSession, Question, Choice, UserAnswer, QuestionBank
+from .models import Exam, ExamSession, Question, Choice, UserAnswer, QuestionBank, StudentAnswer
 from django.http import HttpResponse
 from django.utils.encoding import smart_str
 from django.conf import settings
@@ -458,23 +458,71 @@ def exam_results(request, session_id):
     
     return render(request, 'exam/exam_results.html', context)
 
+@login_required
+def student_results(request):
+    sessions = ExamSession.objects.filter(
+        user=request.user,
+        is_completed=True
+    ).select_related('exam').order_by('-end_time')
+
+    return render(request, 'exam/student_results.html', {'sessions': sessions})
+
+
+@login_required
+def student_result_detail(request, session_id):
+    session = get_object_or_404(
+        ExamSession,
+        id=session_id,
+        user=request.user
+    )
+    
+    answers = StudentAnswer.objects.filter(session=session).select_related('question', 'selected_choice')
+    
+    for a in answers:
+        a.correct_choice = a.question.choices.filter(is_correct=True).first()
+
+
+    return render(request, 'exam/student_result_detail.html', {
+        'session': session,
+        'answers': answers
+    })
+
+
 # ===== TEACHER VIEWS =====
 @login_required
 @teacher_required
 def teacher_dashboard(request):
-    my_questions = QuestionBank.objects.filter(created_by=request.user)
-    hard_count = my_questions.filter(difficulty='hard').count()
-    medium_count = my_questions.filter(difficulty='medium').count()
-    easy_count = my_questions.filter(difficulty='easy').count()
+    user = request.user
     
-    
+    # Total Exams dibuat guru ini
+    total_exams = Exam.objects.filter(created_by=user).count()
+
+    # Total Questions dibuat guru ini
+    total_questions = QuestionBank.objects.filter(created_by=user).count()
+
+    # Semua sesi ujian dari ujian yang dia buat
+    total_sessions = ExamSession.objects.filter(exam__created_by=user).count()
+
+    # List ujian miliknya
+    my_exams = Exam.objects.filter(created_by=user).select_related('subject').order_by('-created_at')
+
+    # Activity siswa terakhir (5 terbaru saja biar clean)
+    recent_sessions = ExamSession.objects.filter(
+        exam__created_by=user,
+        is_completed=True
+    ).select_related('user', 'exam').order_by('-end_time')[:5]
+
     context = {
-        'my_questions': my_questions,
-        'hard_count': hard_count,
-        'medium_count': medium_count,
-        'easy_count': easy_count,
+        'total_exams': total_exams,
+        'total_questions': total_questions,
+        'total_sessions': total_sessions,
+        'my_exams': my_exams,
+        'recent_sessions': recent_sessions,
     }
+
     return render(request, 'exam/teacher_dashboard.html', context)
+
+
 @login_required
 @teacher_required
 def teacher_questions(request):
@@ -510,7 +558,7 @@ def add_question(request):
                 choice.save()
             
             messages.success(request, 'Question added successfully!')
-            return redirect('teacher_questions')
+            return redirect('exam:teacher_questions')
     else:
         question_form = QuestionForm(user=request.user)
         choice_formset = ChoiceFormSet()
@@ -536,7 +584,7 @@ def edit_question(request, question_id):
             question_form.save()
             choice_formset.save()
             messages.success(request, 'Question updated successfully!')
-            return redirect('teacher_questions')
+            return redirect('exam:teacher_questions')
     else:
         question_form = QuestionForm(instance=question, user=request.user)
         choice_formset = ChoiceFormSet(instance=question)
@@ -557,7 +605,7 @@ def delete_question(request, question_id):
     if request.method == 'POST':
         question.delete()
         messages.success(request, 'Question deleted successfully!')
-        return redirect('teacher_questions')
+        return redirect('exam:teacher_questions')
     
     return render(request, 'exam/confirm_delete.html', {'object': question})
 
@@ -669,7 +717,7 @@ def upload_questions_csv(request, question_bank_id=None):
                         continue
             
             messages.success(request, f'Successfully uploaded {questions_created} questions!')
-            return redirect('teacher_questions')  # Sesuaikan dengan nama URL Anda
+            return redirect('exam:teacher_questions')  # Sesuaikan dengan nama URL Anda
             
         except Exception as e:
             messages.error(request, f'Error uploading file: {str(e)}')
@@ -688,7 +736,7 @@ def create_question_bank(request):
             question_bank.created_by = request.user
             question_bank.save()
             messages.success(request, 'Question bank created successfully!')
-            return redirect('teacher_questions')
+            return redirect('exam:teacher_questions')
     else:
         form = QuestionBankForm()
     
@@ -939,9 +987,25 @@ def download_question_bank_template(request):
 
 @login_required
 @teacher_required
+
+def auto_wrap_math(text):
+    """Otomatis bungkus teks yang mengandung rumus dengan $...$ biar MathJax render."""
+    if not text:
+        return text
+
+    # Kalau sudah mengandung $ berarti user sengaja → biarin
+    if "$" in text:
+        return text
+
+    # Deteksi "tanda khas rumus"
+    math_indicators = ["^", "_", "√", "∫", "Σ", "π", "=", "+", "-", "/", "*"]
+    if any(sym in text for sym in math_indicators):
+        return f"${text}$"
+
+    return text
+
+
 def bulk_upload_questions(request):
-    """View untuk bulk upload questions dari CSV"""
-    # Get available exams for the dropdown
     exams = Exam.objects.filter(created_by=request.user, is_active=True)
     question_banks = QuestionBank.objects.filter(created_by=request.user)
     
@@ -951,62 +1015,43 @@ def bulk_upload_questions(request):
             exam_id = request.POST.get('exam_id')
             question_bank_id = request.POST.get('question_bank_id')
             
-            # Validasi: Pastikan file ada
             if not csv_file:
                 messages.error(request, 'Please select a CSV file to upload.')
-                return render(request, 'exam/bulk_upload.html', {
-                    'exams': exams,
-                    'question_banks': question_banks
-                })
+                return render(request, 'exam/bulk_upload.html', {'exams': exams, 'question_banks': question_banks})
             
-            # Validasi: Pastikan file adalah CSV
             if not csv_file.name.endswith('.csv'):
-                messages.error(request, 'Please upload a valid CSV file.')
-                return render(request, 'exam/bulk_upload.html', {
-                    'exams': exams,
-                    'question_banks': question_banks
-                })
-            
-            # Validasi: Pastikan exam dipilih
+                messages.error(request, 'Please upload a valid CSV file (.csv).')
+                return render(request, 'exam/bulk_upload.html', {'exams': exams, 'question_banks': question_banks})
+
             if not exam_id:
-                messages.error(request, 'Please select an exam for these questions.')
-                return render(request, 'exam/bulk_upload.html', {
-                    'exams': exams,
-                    'question_banks': question_banks
-                })
+                messages.error(request, 'Please select an exam.')
+                return render(request, 'exam/bulk_upload.html', {'exams': exams, 'question_banks': question_banks})
             
-            # Baca file CSV
-            data_set = csv_file.read().decode('UTF-8')
+            # ✅ UTF-8 BOM Safe (biar ARAB / PEGON masuk utuh)
+            data_set = csv_file.read().decode('utf-8-sig')
             io_string = io.StringIO(data_set)
             
             questions_created = 0
+            
             with transaction.atomic():
                 for row_num, row in enumerate(csv.reader(io_string, delimiter=','), 1):
-                    # Skip header row
-                    if row_num == 1:
+                    if row_num == 1 or not any(row) or len(row) < 5:
                         continue
-                    
-                    # Skip empty rows
-                    if not any(row) or len(row) < 5:
-                        continue
-                    
+
                     try:
-                        # Process each row
-                        question_text = row[0].strip()
+                        # ✅ Jangan strip teks → biarkan RTL natural
+                        question_text = row[0]
                         question_type = row[1].strip().lower()
                         points = int(row[2]) if row[2].strip().isdigit() else 1
                         difficulty = row[3].strip().lower()
                         correct_answer = row[4].strip().upper()
-                        
-                        # Validasi difficulty
+
                         if difficulty not in ['easy', 'medium', 'hard']:
                             difficulty = 'medium'
-                        
-                        # Validasi question type
+
                         if question_type not in ['multiple_choice', 'true_false', 'short_answer', 'essay']:
                             question_type = 'multiple_choice'
-                        
-                        # Create question
+
                         question = Question.objects.create(
                             text=question_text,
                             question_type=question_type,
@@ -1015,60 +1060,42 @@ def bulk_upload_questions(request):
                             exam_id=exam_id,
                             created_by=request.user
                         )
-                        
-                        # Jika ada question_bank_id, assign ke question bank
-                        if question_bank_id and question_bank_id != '':
+
+                        if question_bank_id:
                             question.question_bank_id = question_bank_id
                             question.save()
-                        
-                        # Create choices untuk multiple choice questions
+
+                        # ✅ MULTIPLE CHOICE (pilihan tidak di-strip)
                         if question_type == 'multiple_choice' and len(row) >= 9:
-                            choices = row[5:9]  # Options A, B, C, D
-                            for i, choice_text in enumerate(choices):
-                                if choice_text.strip():  # Only create if choice text is not empty
-                                    is_correct = (chr(65 + i) == correct_answer)  # A=0, B=1, etc.
+                            choices = row[5:9]
+                            for i, choice in enumerate(choices):
+                                if choice:
                                     Choice.objects.create(
                                         question=question,
-                                        text=choice_text.strip(),
-                                        is_correct=is_correct
+                                        text=choice,
+                                        is_correct=(chr(65 + i) == correct_answer)
                                     )
-                        
-                        # Create choices untuk true_false questions
+
+                        # ✅ TRUE / FALSE clean
                         elif question_type == 'true_false':
-                            # Create True choice
-                            Choice.objects.create(
-                                question=question,
-                                text="True",
-                                is_correct=(correct_answer.upper() == 'TRUE' or correct_answer == 'A')
-                            )
-                            # Create False choice  
-                            Choice.objects.create(
-                                question=question,
-                                text="False", 
-                                is_correct=(correct_answer.upper() == 'FALSE' or correct_answer == 'B')
-                            )
-                        
+                            Choice.objects.create(question=question, text="True", is_correct=(correct_answer in ['TRUE', 'A']))
+                            Choice.objects.create(question=question, text="False", is_correct=(correct_answer in ['FALSE', 'B']))
+
                         questions_created += 1
-                        
+                    
                     except Exception as e:
-                        # Skip row jika ada error dan continue ke row berikutnya
-                        print(f"Error processing row {row_num}: {e}")
+                        print(f"Row {row_num} skipped: {e}")
                         continue
-            
-            messages.success(request, f'Successfully uploaded {questions_created} questions!')
-            return redirect('teacher_questions')
-            
+
+            messages.success(request, f'Successfully uploaded {questions_created} questions (Arabic/Pegon supported).')
+            return redirect('exam:teacher_questions')
+
         except Exception as e:
             messages.error(request, f'Error uploading file: {str(e)}')
-            return render(request, 'exam/bulk_upload.html', {
-                'exams': exams,
-                'question_banks': question_banks
-            })
     
-    return render(request, 'exam/bulk_upload.html', {
-        'exams': exams,
-        'question_banks': question_banks
-    })
+    return render(request, 'exam/bulk_upload.html', {'exams': exams, 'question_banks': question_banks})
+
+    
 @login_required
 @teacher_required
 def create_exam(request):

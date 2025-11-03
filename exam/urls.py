@@ -24,6 +24,10 @@ urlpatterns = [
     path('student/validate-token/', views.validate_exam_token, name='validate_exam_token'),
     path('student/exam/token/<str:token>/', views.access_exam_with_token, name='access_exam_with_token'),
 
+    path('student/results/', views.student_results, name='student_results'),
+    path('student/results/<int:session_id>/', views.student_result_detail, name='student_result_detail'),
+
+
      # Error pages
     path('exam/not-available/', views.exam_not_available, name='exam_not_available'),
     path('exam/ended/', views.exam_ended, name='exam_ended'),
