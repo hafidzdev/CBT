@@ -20,20 +20,20 @@
                     <span class="bg-green-500 px-3 py-1 rounded-full text-sm">
                         {{ user.get_full_name|default:user.username }}
                     </span>
-                <form method="post" action="{% url 'exam:logout' %}" class="d-inline">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-link navbar-btn">
-                        <i class="fas fa-power-off"></i> Logout
-                    </button>
-                </form>
+                    <form method="post" action="{% url 'exam:logout' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="hover:opacity-75 flex items-center space-x-2">
+                            <i class="fas fa-power-off"></i> <span>Logout</span>
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
     </nav>
 
-    <!-- Main Content -->
     <div class="container mx-auto px-4 py-8">
-        <!-- Welcome Section -->
+
+        <!-- Welcome -->
         <div class="bg-gradient-to-r from-green-500 to-blue-600 rounded-2xl p-8 text-white mb-8 shadow-lg">
             <div class="flex justify-between items-center">
                 <div>
@@ -50,7 +50,7 @@
             </div>
         </div>
 
-        <!-- Statistics -->
+        <!-- Stats -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div class="bg-white rounded-2xl p-6 shadow-lg text-center">
                 <div class="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center mx-auto mb-4">
@@ -75,154 +75,98 @@
             </div>
         </div>
 
-        <!-- Tambahkan di teacher_dashboard.html setelah statistics section -->
-    <div class="bg-white rounded-2xl shadow-lg p-6 mb-8">
-        <h2 class="text-2xl font-bold text-gray-800 mb-6">Question Management</h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <a href="{% url 'exam:teacher_questions' %}" class="bg-green-600 text-white p-6 rounded-lg text-center hover:bg-green-700 transition duration-200">
-                <i class="fas fa-question-circle text-3xl mb-4"></i>
-                <h3 class="text-xl font-semibold mb-2">Manage Questions</h3>
-                <p class="text-green-100">Create and organize questions</p>
-            </a>
-            <a href="{% url 'exam:add_question' %}" class="bg-blue-600 text-white p-6 rounded-lg text-center hover:bg-blue-700 transition duration-200">
-                <i class="fas fa-plus-circle text-3xl mb-4"></i>
-                <h3 class="text-xl font-semibold mb-2">Add Question</h3>
-                <p class="text-blue-100">Create single question</p>
-            </a>
-            <a href="{% url 'exam:bulk_upload_questions' %}" class="bg-purple-600 text-white p-6 rounded-lg text-center hover:bg-purple-700 transition duration-200">
-                <i class="fas fa-file-upload text-3xl mb-4"></i>
-                <h3 class="text-xl font-semibold mb-2">Bulk Upload</h3>
-                <p class="text-purple-100">Upload multiple questions</p>
-            </a>
+        <!-- Question Management -->
+        <div class="bg-white rounded-2xl shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">Question Management</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <a href="{% url 'exam:teacher_questions' %}" class="bg-green-600 text-white p-6 rounded-lg text-center hover:bg-green-700 transition duration-200">
+                    <i class="fas fa-question-circle text-3xl mb-4"></i>
+                    <h3 class="text-xl font-semibold mb-2">Manage Questions</h3>
+                    <p class="text-green-100">Create and organize questions</p>
+                </a>
+                <a href="{% url 'exam:add_question' %}" class="bg-blue-600 text-white p-6 rounded-lg text-center hover:bg-blue-700 transition duration-200">
+                    <i class="fas fa-plus-circle text-3xl mb-4"></i>
+                    <h3 class="text-xl font-semibold mb-2">Add Question</h3>
+                    <p class="text-blue-100">Create single question</p>
+                </a>
+                <a href="{% url 'exam:bulk_upload_questions' %}" class="bg-purple-600 text-white p-6 rounded-lg text-center hover:bg-purple-700 transition duration-200">
+                    <i class="fas fa-file-upload text-3xl mb-4"></i>
+                    <h3 class="text-xl font-semibold mb-2">Bulk Upload</h3>
+                    <p class="text-purple-100">Upload multiple questions</p>
+                </a>
+            </div>
         </div>
-    </div>
 
         <!-- My Exams -->
         <div class="bg-white rounded-2xl shadow-lg p-6 mb-8">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold text-gray-800">My Exams</h2>
-                <a href="{% url 'exam:create_exam' %}" 
-                    class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-200 font-semibold inline-flex items-center">
-                <i class="fas fa-plus mr-2"></i>Create New Exam
-                 </a>
-
+                <a href="{% url 'exam:create_exam' %}" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-200 font-semibold inline-flex items-center">
+                    <i class="fas fa-plus mr-2"></i>Create New Exam
+                </a>
             </div>
 
             {% if my_exams %}
-            <div class="overflow-x-auto">
-                <table class="w-full">
-                    <thead>
-                        <tr class="bg-gray-50">
-                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Exam Title</th>
-                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Subject</th>
-                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Status</th>
-                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Students</th>
-                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-200">
-                        {% for exam in my_exams %}
-                        <tr class="hover:bg-gray-50">
-                            <td class="px-4 py-4">
-                                <div class="flex items-center space-x-3">
-                                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                        <i class="fas fa-file-alt text-blue-600"></i>
-                                    </div>
-                                    <div>
-                                        <p class="font-semibold text-gray-800">{{ exam.title }}</p>
-                                        <p class="text-sm text-gray-500">{{ exam.get_exam_type_display }}</p>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="px-4 py-4">
-                                <span class="bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm">
-                                    {{ exam.subject.name }}
-                                </span>
-                            </td>
-                            <td class="px-4 py-4">
-                                <span class="{% if exam.status == 'published' %}bg-green-100 text-green-800{% else %}bg-yellow-100 text-yellow-800{% endif %} px-2 py-1 rounded-full text-xs font-semibold">
-                                    {{ exam.get_status_display }}
-                                </span>
-                            </td>
-                            <td class="px-4 py-4">
-                                <span class="font-semibold text-gray-800">
-                                    {{ exam.examsession_set.count }}
-                                </span>
-                                <span class="text-sm text-gray-500">attempts</span>
-                            </td>
-                            <td class="px-4 py-4">
-                                <div class="flex space-x-2">
-                                    <button class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">
-                                        <i class="fas fa-chart-bar"></i>
-                                    </button>
-                                    <button class="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+            <table class="w-full">
+                <thead>
+                    <tr class="bg-gray-50">
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Exam Title</th>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Subject</th>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Status</th>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Students</th>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for exam in my_exams %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-4 font-semibold text-gray-800">{{ exam.title }}</td>
+                        <td class="px-4 py-4">{{ exam.subject.name|default:"General" }}</td>
+                        <td class="px-4 py-4">
+                            <span class="{% if exam.status == 'published' %}bg-green-100 text-green-800{% else %}bg-yellow-100 text-yellow-800{% endif %} px-2 py-1 rounded-full text-xs font-semibold">
+                                {{ exam.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-4 font-semibold text-gray-800">{{ exam.examsession_set.count }}</td>
+                        <td class="px-4 py-4 flex space-x-2">
+                            <a href="#" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"><i class="fas fa-edit"></i></a>
+                            <a href="#" class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"><i class="fas fa-chart-bar"></i></a>
+                            <a href="#" class="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700"><i class="fas fa-eye"></i></a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
             {% else %}
-            <div class="text-center py-12">
-                <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <i class="fas fa-file-alt text-gray-400 text-3xl"></i>
-                </div>
-                <h3 class="text-xl font-semibold text-gray-600 mb-2">No Exams Created</h3>
-                <p class="text-gray-500">Create your first exam to get started.</p>
-            </div>
+            <div class="text-center py-12 text-gray-500">No Exams Created Yet</div>
             {% endif %}
         </div>
 
-        <!-- Recent Student Activity -->
+        <!-- Recent student activity -->
         <div class="bg-white rounded-2xl shadow-lg p-6">
             <h2 class="text-2xl font-bold text-gray-800 mb-6">Recent Student Activity</h2>
             {% if recent_sessions %}
-            <div class="space-y-4">
-                {% for session in recent_sessions %}
-                <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
-                    <div class="flex items-center space-x-4">
-                        <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                            <span class="font-semibold text-purple-600">{{ session.user.username|first|upper }}</span>
-                        </div>
-                        <div>
-                            <p class="font-semibold text-gray-800">{{ session.user.get_full_name|default:session.user.username }}</p>
-                            <p class="text-sm text-gray-600">Completed {{ session.exam.title }}</p>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        {% if session.score %}
-                        <span class="font-bold {% if session.score >= session.exam.passing_score %}text-green-600{% else %}text-red-600{% endif %}">
-                            {{ session.score }}%
-                        </span>
-                        <p class="text-sm text-gray-500">{{ session.end_time|date:"M d, H:i" }}</p>
-                        {% else %}
-                        <span class="text-gray-500">Not graded</span>
-                        {% endif %}
-                    </div>
+            {% for session in recent_sessions %}
+            <div class="p-4 border rounded-lg mb-2 flex justify-between hover:bg-gray-50">
+                <div>
+                    <p class="font-semibold">{{ session.user.get_full_name|default:session.user.username }}</p>
+                    <p class="text-sm text-gray-600">Completed: {{ session.exam.title }}</p>
                 </div>
-                {% endfor %}
+                <div>
+                    <span class="font-bold {% if session.score >= session.exam.passing_score %}text-green-600{% else %}text-red-600{% endif %}">
+                        {{ session.score }}%
+                    </span>
+                </div>
             </div>
+            {% endfor %}
             {% else %}
-            <div class="text-center py-8 text-gray-500">
-                <i class="fas fa-history text-4xl mb-4 text-gray-300"></i>
-                <p>No student activity yet</p>
-            </div>
+            <div class="text-center py-8 text-gray-500">No student activity yet</div>
             {% endif %}
         </div>
     </div>
-   
 
-    <!-- Footer -->
-    <footer class="bg-gray-800 text-white py-6 mt-12">
-        <div class="container mx-auto px-4 text-center">
-            <p>&copy; 2024 CBT System. Teacher Portal - Empowering education.</p>
-        </div>
+    <footer class="bg-gray-800 text-white py-6 mt-12 text-center">
+        <p>&copy; 2024 CBT System. Teacher Portal - Empowering education.</p>
     </footer>
 </body>
 </html>
