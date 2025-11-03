@@ -20,7 +20,7 @@
                     <span class="bg-green-500 px-3 py-1 rounded-full text-sm">
                         {{ user.get_full_name|default:user.username }}
                     </span>
-                <form method="post" action="{% url 'logout' %}" class="d-inline">
+                <form method="post" action="{% url 'exam:logout' %}" class="d-inline">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-link navbar-btn">
                         <i class="fas fa-power-off"></i> Logout
@@ -79,17 +79,17 @@
     <div class="bg-white rounded-2xl shadow-lg p-6 mb-8">
         <h2 class="text-2xl font-bold text-gray-800 mb-6">Question Management</h2>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <a href="{% url 'teacher_questions' %}" class="bg-green-600 text-white p-6 rounded-lg text-center hover:bg-green-700 transition duration-200">
+            <a href="{% url 'exam:teacher_questions' %}" class="bg-green-600 text-white p-6 rounded-lg text-center hover:bg-green-700 transition duration-200">
                 <i class="fas fa-question-circle text-3xl mb-4"></i>
                 <h3 class="text-xl font-semibold mb-2">Manage Questions</h3>
                 <p class="text-green-100">Create and organize questions</p>
             </a>
-            <a href="{% url 'add_question' %}" class="bg-blue-600 text-white p-6 rounded-lg text-center hover:bg-blue-700 transition duration-200">
+            <a href="{% url 'exam:add_question' %}" class="bg-blue-600 text-white p-6 rounded-lg text-center hover:bg-blue-700 transition duration-200">
                 <i class="fas fa-plus-circle text-3xl mb-4"></i>
                 <h3 class="text-xl font-semibold mb-2">Add Question</h3>
                 <p class="text-blue-100">Create single question</p>
             </a>
-            <a href="{% url 'bulk_upload_questions' %}" class="bg-purple-600 text-white p-6 rounded-lg text-center hover:bg-purple-700 transition duration-200">
+            <a href="{% url 'exam:bulk_upload_questions' %}" class="bg-purple-600 text-white p-6 rounded-lg text-center hover:bg-purple-700 transition duration-200">
                 <i class="fas fa-file-upload text-3xl mb-4"></i>
                 <h3 class="text-xl font-semibold mb-2">Bulk Upload</h3>
                 <p class="text-purple-100">Upload multiple questions</p>
@@ -101,7 +101,7 @@
         <div class="bg-white rounded-2xl shadow-lg p-6 mb-8">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold text-gray-800">My Exams</h2>
-                <a href="{% url 'create_exam' %}" 
+                <a href="{% url 'exam:create_exam' %}" 
                     class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-200 font-semibold inline-flex items-center">
                 <i class="fas fa-plus mr-2"></i>Create New Exam
                  </a>

@@ -96,7 +96,7 @@ def simple_add_question(request):
             option_d=option_d,
             correct_answer=correct_answer,
         )
-        return redirect('teacher_dashboard')
+        return redirect('exam:teacher_dashboard')
 
     return render(request, 'exam/simple_add_question.html')
 
@@ -1080,7 +1080,7 @@ def create_exam(request):
             exam.created_by = request.user
             exam.save()
             messages.success(request, 'Exam created successfully!')
-            return redirect('teacher_dashboard')  # arahkan ke dashboard guru
+            return redirect('exam:teacher_dashboard')  # arahkan ke dashboard guru
     else:
         form = ExamForm()
 
@@ -1246,6 +1246,8 @@ def validate_exam_token(request):
             })
     
     return JsonResponse({'valid': False, 'message': 'Invalid request method'})
+
+
 
 @login_required
 @student_required
