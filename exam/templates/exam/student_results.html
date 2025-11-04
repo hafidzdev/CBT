@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}My Results{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto mt-8 space-y-6">
+
+    <h1 class="text-2xl font-bold text-gray-800">Exam Results</h1>
+
+    {% if sessions %}
+        <div class="space-y-4">
+            {% for session in sessions %}
+                <a href="{% url 'exam:student_result_detail' session.id %}"
+                   class="block bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h2 class="font-semibold text-lg">{{ session.exam.title }}</h2>
+                            <p class="text-sm text-gray-500">Completed: {{ session.end_time|date:"M d, H:i" }}</p>
+                        </div>
+
+                        <div class="text-right">
+                            <span class="text-xl font-bold 
+                                {% if session.score >= session.exam.passing_score %}text-green-600{% else %}text-red-600{% endif %}">
+                                {{ session.score }}%
+                            </span>
+                            <p class="text-gray-500 text-sm">Passing: {{ session.exam.passing_score }}%</p>
+                        </div>
+                    </div>
+
+                </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="text-center py-16 text-gray-500">
+            Belum ada hasil ujian.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

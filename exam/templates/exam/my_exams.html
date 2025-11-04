@@ -146,6 +146,9 @@
                                 <div class="flex-1">
                                     <h4 class="font-bold text-gray-800 text-lg mb-1">{{ exam.title }}</h4>
                                     <p class="text-gray-600 text-sm mb-2">{{ exam.description|truncatewords:20 }}</p>
+
+
+
                                     <div class="flex items-center space-x-4 text-xs text-gray-500">
                                         <span class="flex items-center">
                                             <i class="fas fa-book mr-1"></i>
@@ -162,6 +165,21 @@
                                 Available
                             </span>
                         </div>
+
+                        <!-- Exam Token Display -->
+                     
+                                    <!-- ✅ Tampilkan Token jika ada -->
+                                    {% if exam.access_token %}
+                                    <div class="flex items-center bg-purple-50 border border-purple-200 rounded-lg p-2 mb-4">
+                                        <span class="font-mono text-purple-700 font-semibold flex-1">
+                                            {{ exam.access_token }}
+                                        </span>
+                                        <button class="text-white bg-purple-600 px-3 py-1 rounded hover:bg-purple-700 text-sm"
+                                                onclick="navigator.clipboard.writeText('{{ exam.access_token }}')">
+                                            Copy
+                                        </button>
+                                    </div>
+                                    {% endif %}
                         
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-sm">
                             <div class="text-center">
@@ -425,6 +443,16 @@
 {% endblock %}
 
 {% block scripts %}
+<script>
+function showCopiedMessage() {
+    const msg = document.createElement('div');
+    msg.textContent = "Token Copied ✅";
+    msg.className = "fixed top-6 right-6 bg-purple-600 text-white px-4 py-2 rounded-lg shadow-lg animate-bounce";
+    document.body.appendChild(msg);
+    setTimeout(() => msg.remove(), 1800);
+}
+</script>
+
  <script>
     let currentExamId = null;
 

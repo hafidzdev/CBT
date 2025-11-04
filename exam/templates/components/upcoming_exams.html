@@ -1,7 +1,7 @@
 <div class="bg-white rounded-2xl shadow-lg p-6 card-hover">
     <div class="flex items-center justify-between mb-6">
         <h3 class="text-xl font-bold text-gray-800">Upcoming Exams</h3>
-        <a href="{% url 'my_exams' %}#upcoming-exams"
+        <a href="{% url 'exam:my_exams' %}#upcoming-exams"
          class="text-blue-600 hover:text-blue-800 text-sm font-semibold">
            View All
           </a>
@@ -25,7 +25,7 @@
                 </div>
             </div>
             <div class="text-right">
-                <a href="{% url 'take_exam' exam.id %}" 
+                <a href="{% url 'exam:take_exam' exam.id %}" 
                    class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-200 font-semibold">
                     Start
                 </a>

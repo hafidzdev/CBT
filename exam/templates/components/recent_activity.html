@@ -22,7 +22,7 @@
             <div class="text-right">
                 <span class="text-xs text-gray-500">{{ session.start_time|date:"M d" }}</span>
                 {% if session.is_completed %}
-                <a href="{% url 'exam_results' session.id %}" class="block text-blue-600 hover:text-blue-800 text-sm font-semibold mt-1">
+                <a href="{% url 'exam:exam_results' session.id %}" class="block text-blue-600 hover:text-blue-800 text-sm font-semibold mt-1">
                     View Results
                 </a>
                 {% endif %}

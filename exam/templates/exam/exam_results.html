@@ -48,7 +48,7 @@
                     <h1 class="text-xl font-bold">Exam Results</h1>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <a href="{% url 'student_dashboard' %}" class="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg transition duration-200">
+                    <a href="{% url 'exam:student_dashboard' %}" class="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg transition duration-200">
                         <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
                     </a>
                     <button onclick="window.print()" class="bg-green-500 hover:bg-green-600 px-4 py-2 rounded-lg transition duration-200">
@@ -210,14 +210,14 @@
             </div>
             <!-- Action Buttons -->
             <div class="flex justify-center space-x-4 mt-8">
-                <a href="{% url 'student_dashboard' %}" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg transition duration-200 font-semibold">
+                <a href="{% url 'exam:student_dashboard' %}" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg transition duration-200 font-semibold">
                     <i class="fas fa-home mr-2"></i>Back to Dashboard
                 </a>
                 <button onclick="window.print()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg transition duration-200 font-semibold">
                     <i class="fas fa-print mr-2"></i>Print Result
                 </button>
                 {% if exam_session.exam.show_result_immediately %}
-                <a href="{% url 'start_exam' exam_session.exam.id %}" class="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 rounded-lg transition duration-200 font-semibold">
+                <a href="{% url 'exam:start_exam' exam_session.exam.id %}" class="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 rounded-lg transition duration-200 font-semibold">
                     <i class="fas fa-redo mr-2"></i>Retake Exam
                 </a>
                 {% endif %}

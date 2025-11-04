@@ -6,6 +6,7 @@
 {% block page_title %}{{ exam.title }}{% endblock %}
 
 {% block extra_head %}
+
 <style>
     .exam-container {
         max-height: 80vh;
@@ -81,7 +82,7 @@
             </div>
             <h2 class="text-2xl font-bold text-gray-800 mb-4" x-text="errorTitle"></h2>
             <p class="text-gray-600 mb-6" x-text="errorMessage"></p>
-            <a href="{% url 'my_exams' %}" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition duration-200 font-semibold">
+            <a href="{% url 'exam:my_exams' %}" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition duration-200 font-semibold">
                 Back to My Exams
             </a>
         </div>
@@ -105,7 +106,7 @@
                             <span>Questions: {{ exam.questions.count }}</span>
                         </div>
                         <div class="flex items-center">
-                            <i class="fas fa-percentage mr-2 text-purple-500"></i>
+                            <i class="fas fa-percentage mr-2 text-purple-500"></i>`
                             <span>Passing Score: {{ exam.passing_score }}%</span>
                         </div>
                     </div>
@@ -332,169 +333,184 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 <script>
-    function examApp() {
-        return {
-            questions: {{ questions_data|safe }},
-            currentQuestionIndex: 0,
-            remainingTime: {{ exam.duration_minutes }} * 60,
-            showSubmitModal: false,
-            showTimeUpModal: false,
-            examSessionId: null,
-            isLoading: true,
-            showError: false,
-            errorTitle: '',
-            errorMessage: '',
+window.MathJax = {
+  tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+
+<script>
+function examApp() {
+    return {
+        questions: {{ questions_data|safe }},
+        currentQuestionIndex: 0,
+        remainingTime: {{ exam.duration_minutes }} * 60,
+        showSubmitModal: false,
+        showTimeUpModal: false,
+        examSessionId: null,
+        isLoading: true,
+        showError: false,
+        errorTitle: '',
+        errorMessage: '',
+        
+        get currentQuestion() {
+            return this.questions[this.currentQuestionIndex];
+        },
+        
+        get answeredCount() {
+            return this.questions.filter(q => q.answered).length;
+        },
+
+        // --- Render ulang MathJax tiap soal berganti ---
+        renderMath() {
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                window.MathJax.typesetPromise();
+            }
+        },
+
+        async init() {
+            try {
+                await this.validateExam();
+                this.startTimer();
+                this.loadProgress();
+                this.autoSave();
+                this.isLoading = false;
+
+                // render rumus saat halaman pertama muncul
+                this.renderMath();
+
+            } catch (error) {
+                this.showError = true;
+                this.errorTitle = 'Exam Error';
+                this.errorMessage = error.message;
+                this.isLoading = false;
+            }
+        },
+        
+        async validateExam() {
+            const now = new Date();
+            const startTime = new Date('{{ exam.start_time|date:"c" }}');
+            const endTime = new Date('{{ exam.end_time|date:"c" }}');
             
-            get currentQuestion() {
-                return this.questions[this.currentQuestionIndex];
-            },
-            
-            get answeredCount() {
-                return this.questions.filter(q => q.answered).length;
-            },
-            
-            async init() {
-                try {
-                    await this.validateExam();
-                    this.startTimer();
-                    this.loadProgress();
-                    this.autoSave();
-                    this.isLoading = false;
-                } catch (error) {
-                    this.showError = true;
-                    this.errorTitle = 'Exam Error';
-                    this.errorMessage = error.message;
-                    this.isLoading = false;
+            if (now < startTime) throw new Error('This exam has not started yet.');
+            if (now > endTime) throw new Error('This exam has already ended.');
+        },
+        
+        startTimer() {
+            const timer = setInterval(() => {
+                if (this.remainingTime <= 0) {
+                    clearInterval(timer);
+                    this.showTimeUpModal = true;
+                    return;
                 }
-            },
-            
-            async validateExam() {
-                // Validasi waktu
-                const now = new Date();
-                const startTime = new Date('{{ exam.start_time|date:"c" }}');
-                const endTime = new Date('{{ exam.end_time|date:"c" }}');
-                
-                if (now < startTime) {
-                    throw new Error('This exam has not started yet.');
-                }
-                
-                if (now > endTime) {
-                    throw new Error('This exam has already ended.');
-                }
-            },
-            
-            startTimer() {
-                const timer = setInterval(() => {
-                    if (this.remainingTime <= 0) {
-                        clearInterval(timer);
-                        this.showTimeUpModal = true;
-                        return;
+                this.remainingTime--;
+            }, 1000);
+        },
+        
+        formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        },
+        
+        goToQuestion(index) {
+            this.currentQuestionIndex = index;
+            this.renderMath();
+        },
+        
+        nextQuestion() {
+            if (this.currentQuestionIndex < this.questions.length - 1) {
+                this.currentQuestionIndex++;
+                this.renderMath();
+            }
+        },
+        
+        previousQuestion() {
+            if (this.currentQuestionIndex > 0) {
+                this.currentQuestionIndex--;
+                this.renderMath();
+            }
+        },
+        
+        flagQuestion() {
+            this.questions[this.currentQuestionIndex].flagged = 
+                !this.questions[this.currentQuestionIndex].flagged;
+            this.saveProgress();
+        },
+        
+        saveAnswer(optionId) {
+            this.questions[this.currentQuestionIndex].answered = true;
+            this.questions[this.currentQuestionIndex].selected_option = optionId;
+            this.saveProgress();
+        },
+        
+        saveProgress() {
+            const progress = {
+                answers: this.questions.map(q => ({
+                    question_id: q.id,
+                    option_id: q.selected_option
+                })).filter(a => a.option_id),
+                current_question: this.currentQuestionIndex,
+                time_remaining: this.remainingTime
+            };
+            localStorage.setItem('exam_progress_{{ exam.id }}', JSON.stringify(progress));
+        },
+        
+        loadProgress() {
+            const saved = localStorage.getItem('exam_progress_{{ exam.id }}');
+            if (saved) {
+                const progress = JSON.parse(saved);
+                progress.answers.forEach(answer => {
+                    const question = this.questions.find(q => q.id === answer.question_id);
+                    if (question) {
+                        question.answered = true;
+                        question.selected_option = answer.option_id;
                     }
-                    this.remainingTime--;
-                }, 1000);
-            },
-            
-            formatTime(seconds) {
-                const minutes = Math.floor(seconds / 60);
-                const secs = seconds % 60;
-                return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-            },
-            
-            goToQuestion(index) {
-                this.currentQuestionIndex = index;
-            },
-            
-            nextQuestion() {
-                if (this.currentQuestionIndex < this.questions.length - 1) {
-                    this.currentQuestionIndex++;
-                }
-            },
-            
-            previousQuestion() {
-                if (this.currentQuestionIndex > 0) {
-                    this.currentQuestionIndex--;
-                }
-            },
-            
-            flagQuestion() {
-                this.questions[this.currentQuestionIndex].flagged = 
-                    !this.questions[this.currentQuestionIndex].flagged;
+                });
+                this.currentQuestionIndex = progress.current_question || 0;
+            }
+        },
+        
+        autoSave() {
+            setInterval(() => {
                 this.saveProgress();
-            },
+            }, 30000);
+        },
+        
+        async submitExam() {
+            const answers = this.questions
+                .filter(q => q.selected_option)
+                .map(q => ({
+                    question_id: q.id,
+                    option_id: q.selected_option
+                }));
             
-            saveAnswer(optionId) {
-                this.questions[this.currentQuestionIndex].answered = true;
-                this.questions[this.currentQuestionIndex].selected_option = optionId;
-                this.saveProgress();
-            },
-            
-            saveProgress() {
-                const progress = {
-                    answers: this.questions.map(q => ({
-                        question_id: q.id,
-                        option_id: q.selected_option
-                    })).filter(a => a.option_id),
-                    current_question: this.currentQuestionIndex,
-                    time_remaining: this.remainingTime
-                };
-                localStorage.setItem('exam_progress_{{ exam.id }}', JSON.stringify(progress));
-            },
-            
-            loadProgress() {
-                const saved = localStorage.getItem('exam_progress_{{ exam.id }}');
-                if (saved) {
-                    const progress = JSON.parse(saved);
-                    progress.answers.forEach(answer => {
-                        const question = this.questions.find(q => q.id === answer.question_id);
-                        if (question) {
-                            question.answered = true;
-                            question.selected_option = answer.option_id;
-                        }
-                    });
-                    this.currentQuestionIndex = progress.current_question || 0;
-                    // Don't load saved time to prevent cheating
-                }
-            },
-            
-            autoSave() {
-                setInterval(() => {
-                    this.saveProgress();
-                }, 30000); // Auto-save every 30 seconds
-            },
-            
-            async submitExam() {
-                const answers = this.questions
-                    .filter(q => q.selected_option)
-                    .map(q => ({
-                        question_id: q.id,
-                        option_id: q.selected_option
-                    }));
+            try {
+                const response = await fetch('{% url "exam:submit_exam" exam.id %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        answers: answers,
+                        time_spent: {{ exam.duration_minutes }} * 60 - this.remainingTime
+                    })
+                });
                 
-                try {
-                    const response = await fetch('{% url "submit_exam" exam.id %}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': '{{ csrf_token }}'
-                        },
-                        body: JSON.stringify({
-                            answers: answers,
-                            time_spent: {{ exam.duration_minutes }} * 60 - this.remainingTime
-                        })
-                    });
-                    
-                    if (response.ok) {
-                        localStorage.removeItem('exam_progress_{{ exam.id }}');
-                        window.location.href = '{% url "exam_results" 0 %}'.replace('0', (await response.json()).session_id);
-                    }
-                } catch (error) {
-                    console.error('Error submitting exam:', error);
-                    alert('Error submitting exam. Please try again.');
+                if (response.ok) {
+                    localStorage.removeItem('exam_progress_{{ exam.id }}');
+                    window.location.href = '{% url "exam:exam_results" 0 %}'.replace('0', (await response.json()).session_id);
                 }
+            } catch (error) {
+                console.error('Error submitting exam:', error);
+                alert('Error submitting exam. Please try again.');
             }
         }
     }
+}
 </script>
 {% endblock %}

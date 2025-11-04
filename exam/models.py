@@ -452,3 +452,24 @@ def update_exam_session_stats(sender, instance, **kwargs):
         
         # Calculate final score
         instance.calculate_score()
+
+class StudentAnswer(models.Model):
+    session = models.ForeignKey('ExamSession', on_delete=models.CASCADE, related_name='answers')
+    question = models.ForeignKey('Question', on_delete=models.CASCADE)
+    selected_choice = models.ForeignKey('Choice', null=True, blank=True, on_delete=models.SET_NULL)
+    
+    # kalau short / essay / numeric answer
+    text_answer = models.TextField(null=True, blank=True)
+
+    is_correct = models.BooleanField(default=False)
+
+    answered_at = models.DateTimeField(auto_now_add=True)
+
+    def chosen_answer_text(self):
+        # buat display jawaban lebih gampang di template
+        if self.selected_choice:
+            return self.selected_choice.text
+        return self.text_answer or "—"
+
+    def __str__(self):
+        return f"{self.session.user} - {self.question.id}"
