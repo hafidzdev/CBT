@@ -16,6 +16,8 @@ from .decorators import student_required
 from exam.decorators import teacher_required
 from django.contrib.auth import logout
 from django.views.decorators.csrf import csrf_exempt
+from .decorators import admin_required
+
 
 
 import json

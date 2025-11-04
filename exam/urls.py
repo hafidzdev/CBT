@@ -49,6 +49,10 @@ urlpatterns = [
     path('question-banks/download-template/', views.download_question_bank_template, name='download_question_bank_template'),
     path('download-template/', views.download_question_bank_template, name='download_question_bank_template'),
     path('teacher/exams/create/', views.create_exam, name='create_exam'),
+    path('admin/dashboard/', views.admin_dashboard, name='admin_dashboard'),
+
+
+
 
 
 
@@ -62,4 +66,6 @@ urlpatterns = [
     path('teacher/', lambda request: redirect('exam:teacher_dashboard')),
     path('student/', lambda request: redirect('exam:my-exams')),
     path('admin/', lambda request: redirect('exam:admin_dashboard')),
+
+
 ]
