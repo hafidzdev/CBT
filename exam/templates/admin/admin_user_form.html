@@ -1,0 +1,135 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block content %}
+
+<div class="user-edit-wrapper">
+  <div class="user-edit-card">
+
+    <h2 class="title">Edit User</h2>
+
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+
+      {% if form.non_field_errors %}
+      <div class="error-box">{{ form.non_field_errors }}</div>
+      {% endif %}
+
+      <div class="form-group">
+        <label>Username</label>
+        {{ form.username }}
+      </div>
+
+      <div class="form-group">
+        <label>New Password (optional)</label>
+        {{ form.password1 }}
+      </div>
+
+      <div class="form-group">
+        <label>Confirm New Password</label>
+        {{ form.password2 }}
+      </div>
+
+      <div class="form-group">
+        <label>First Name</label>
+        {{ form.first_name }}
+      </div>
+
+      <div class="form-group">
+        <label>Last Name</label>
+        {{ form.last_name }}
+      </div>
+
+      <div class="form-group">
+        <label>Email</label>
+        {{ form.email }}
+      </div>
+
+      <div class="form-group">
+        <label>Phone</label>
+        {{ form.phone }}
+      </div>
+
+      <div class="form-group">
+        <label>Date of Birth</label>
+        {{ form.date_of_birth }}
+      </div>
+
+      <div class="form-group">
+        <label>Profile Picture</label>
+        {{ form.profile_picture }}
+      </div>
+
+      <div class="form-group">
+        <label>User Type</label>
+        {{ form.user_type }}
+      </div>
+
+      <div class="checkbox-group">
+        <label>{{ form.is_active }} Active</label>
+        <label>{{ form.is_staff }} Staff</label>
+      </div>
+
+      <button type="submit" class="save-btn">Save Changes</button>
+
+    </form>
+
+  </div>
+</div>
+
+<style>
+.user-edit-wrapper {
+  max-width: 900px;
+  margin: 60px auto;
+  padding: 0 20px;
+}
+.user-edit-card {
+  background: white;
+  padding: 42px 50px;
+  border-radius: 14px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.08);
+}
+input, select {
+  width: 100% !important;
+  padding: 12px 14px !important;
+  border: 1px solid #d1d5db !important;
+  border-radius: 8px !important;
+  background: #fafafa !important;
+  font-size: 15px;
+}
+.title {
+  text-align: center;
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 30px;
+  color: #111827;
+}
+.form-group { margin-bottom: 18px; }
+label { font-weight: 600; margin-bottom: 6px; color: #374151; }
+.checkbox-group {
+  display: flex;
+  gap: 25px;
+  margin: 14px 0 24px;
+  font-weight: 600;
+}
+.save-btn {
+  width: 100%;
+  padding: 13px;
+  border-radius: 8px;
+  font-weight: 600;
+  background: #2563eb;
+  color: white;
+  text-align: center;
+}
+.save-btn:hover { background: #1e40af; }
+.error-box {
+  background: #fee2e2;
+  color: #b91c1c;
+  padding: 12px 14px;
+  border-radius: 8px;
+  margin-bottom: 18px;
+  font-weight: 600;
+}
+</style>
+
+{% endblock %}
