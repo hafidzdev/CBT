@@ -1,5 +1,10 @@
 from django import forms
-from .models import Question, Choice, Exam, QuestionBank, Subject
+from .models import Question, Choice, Exam, QuestionBank, Subject, CustomUser
+from django.contrib.auth import get_user_model
+from django.contrib.auth.forms import UserCreationForm
+
+User = get_user_model()
+
 
 class QuestionForm(forms.ModelForm):
     class Meta:
@@ -46,8 +51,6 @@ class ChoiceForm(forms.ModelForm):
 ChoiceFormSet = forms.inlineformset_factory(
     Question, Choice, form=ChoiceForm, extra=4, can_delete=True, max_num=6
 )
-
-
 
 class BulkQuestionForm(forms.Form):
     question_bank = forms.ModelChoiceField(
@@ -339,3 +342,122 @@ class QuestionFilterForm(forms.Form):
         
         if user and user.user_type == 'teacher':
             self.fields['question_bank'].queryset = QuestionBank.objects.filter(created_by=user)
+
+class AdminUserForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'email', 'user_type', 'is_active', 'is_staff']
+        widgets = {
+            'first_name': forms.TextInput(attrs={'class': 'w-full border rounded-lg p-2'}),
+            'last_name': forms.TextInput(attrs={'class': 'w-full border rounded-lg p-2'}),
+            'email': forms.EmailInput(attrs={'class': 'w-full border rounded-lg p-2'}),
+            'user_type': forms.Select(attrs={'class': 'w-full border rounded-lg p-2'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'h-5 w-5'}),
+            'is_staff': forms.CheckboxInput(attrs={'class': 'h-5 w-5'}),
+        }
+
+class AdminCreateUserForm(UserCreationForm):
+    class Meta:
+        model = CustomUser
+        fields = [
+            'username', 'password1', 'password2',
+            'first_name', 'last_name', 'email',
+            'phone', 'date_of_birth', 'profile_picture',
+            'user_type', 'department'
+        ]
+
+        widgets = {
+            'date_of_birth': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'w-full border rounded-lg p-2'
+            }),
+            'first_name': forms.TextInput(attrs={'class': 'w-full border rounded-lg p-2'}),
+            'last_name': forms.TextInput(attrs={'class': 'w-full border rounded-lg p-2'}),
+            'email': forms.EmailInput(attrs={'class': 'w-full border rounded-lg p-2'}),
+            'phone': forms.TextInput(attrs={'class': 'w-full border rounded-lg p-2'}),
+            'user_type': forms.Select(attrs={'class': 'w-full border rounded-lg p-2'}),
+        }
+
+    def clean_username(self):
+        username = self.cleaned_data.get("username")
+        if CustomUser.objects.filter(username=username).exists():
+            raise forms.ValidationError("⚠ Username sudah dipakai. Coba yang lain.")
+        return username
+
+    def clean_email(self):
+        email = self.cleaned_data.get("email")
+        if CustomUser.objects.filter(email=email).exists():
+            raise forms.ValidationError("⚠ Email ini sudah terdaftar.")
+        return email
+
+    def clean_password1(self):
+        password = self.cleaned_data.get("password1")
+        if password and len(password) < 8:
+            raise forms.ValidationError("⚠ Password minimal 8 karakter.")
+        return password
+
+from django import forms
+from django.core.exceptions import ValidationError
+from exam.models import CustomUser
+
+class AdminUserEditForm(forms.ModelForm):
+    # Password opsional → user bisa biarkan kosong
+    password1 = forms.CharField(
+        required=False,
+        widget=forms.PasswordInput(attrs={"placeholder": "Leave blank to keep current password"})
+    )
+    password2 = forms.CharField(
+        required=False,
+        widget=forms.PasswordInput(attrs={"placeholder": "Repeat password"})
+    )
+
+    class Meta:
+        model = CustomUser
+        fields = [
+            'username', 'first_name', 'last_name', 'email', 'phone',
+            'date_of_birth', 'profile_picture', 'user_type', 'is_active', 'is_staff'
+        ]
+
+        widgets = {
+            'date_of_birth': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'w-full px-3 py-2 border border-gray-300 rounded-lg bg-[#fafafa]'
+            }),
+        }
+
+    def clean_username(self):
+        username = self.cleaned_data.get('username')
+        qs = CustomUser.objects.filter(username=username).exclude(id=self.instance.id)
+        if qs.exists():
+            raise ValidationError("Username already in use.")
+        return username
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if email:
+            qs = CustomUser.objects.filter(email=email).exclude(id=self.instance.id)
+            if qs.exists():
+                raise ValidationError("Email already in use.")
+        return email
+
+    def clean(self):
+        cleaned_data = super().clean()
+        p1 = cleaned_data.get("password1")
+        p2 = cleaned_data.get("password2")
+
+        if p1 or p2:
+            if p1 != p2:
+                raise ValidationError("Passwords do not match.")
+            if len(p1) < 8:
+                raise ValidationError("Password must be at least 8 characters.")
+
+        return cleaned_data
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        p1 = self.cleaned_data.get("password1")
+        if p1:
+            user.set_password(p1)
+        if commit:
+            user.save()
+        return user
