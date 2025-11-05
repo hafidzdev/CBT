@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
     <title>{% block title %}CBT System{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -38,6 +42,55 @@
         }
     </style>
 </head>
+
+{% if messages %}
+<div id="toast-wrapper" class="toast-container">
+    {% for message in messages %}
+    <div class="toast-item toast-{{ message.tags }}">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<script>
+setTimeout(() => {
+    const toasts = document.querySelectorAll('.toast-item');
+    toasts.forEach((toast) => {
+        toast.style.opacity = "0";
+        setTimeout(() => toast.remove(), 400);
+    });
+}, 2800);
+</script>
+
+<style>
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 22px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.toast-item {
+    padding: 12px 18px;
+    border-radius: 10px;
+    font-weight: 600;
+    color: white;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    transition: opacity 0.4s ease;
+}
+
+/* warna toast */
+.toast-success { background: #10b981; } /* green */
+.toast-error { background: #ef4444; }   /* red */
+.toast-warning { background: #f59e0b; } /* yellow */
+.toast-info { background: #3b82f6; }    /* blue */
+</style>
+
+
 <body class="bg-gray-50">
     <div class="flex h-screen">
         <!-- Sidebar -->
