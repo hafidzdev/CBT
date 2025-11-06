@@ -11,11 +11,17 @@ from django.http import HttpResponse
 from django.utils.encoding import smart_str
 from django.conf import settings
 from django.db import transaction
-from .forms import ExamForm
+from .forms import ExamForm, AdminUserForm, AdminCreateUserForm, AdminUserEditForm
 from .decorators import student_required
 from exam.decorators import teacher_required
 from django.contrib.auth import logout
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.cache import never_cache
+from functools import wraps
+from django.views.decorators.cache import cache_control
+from django.contrib.auth import get_user_model
+from django.core.paginator import Paginator
+from django.contrib.sessions.models import Session
 from .decorators import admin_required
 
 
@@ -23,6 +29,9 @@ from .decorators import admin_required
 import json
 import csv
 import io
+
+# GET User Data
+User = get_user_model()
 
 # Import semua model yang diperlukan
 from .models import (
@@ -37,6 +46,7 @@ from .forms import (
     QuestionForm, ChoiceFormSet, BulkQuestionForm, QuestionBankForm
 )
 
+
 # ===== DECORATORS UNTUK USER TYPE =====
 def student_required(function=None):
     """Decorator untuk memastikan user adalah student"""
@@ -48,15 +58,21 @@ def student_required(function=None):
         return actual_decorator(function)
     return actual_decorator
 
-def teacher_required(function=None):
-    """Decorator untuk memastikan user adalah teacher"""
-    actual_decorator = user_passes_test(
-        lambda u: u.is_authenticated and u.user_type == 'teacher',
-        login_url='/login/'
-    )
-    if function:
-        return actual_decorator(function)
-    return actual_decorator
+def teacher_required(view_func):
+    @wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+
+        # user udah login, cuma kita cek tipe-nya
+        if not request.user.is_authenticated:
+            return redirect('exam:login')
+
+        if request.user.user_type != 'teacher':
+            messages.error(request, "Unauthorized Access. Teacher only.")
+            return redirect('exam:login')
+
+        return view_func(request, *args, **kwargs)
+    return _wrapped_view
+
 
 def admin_required(function=None):
     """Decorator untuk memastikan user adalah admin/superadmin"""
@@ -67,6 +83,7 @@ def admin_required(function=None):
     if function:
         return actual_decorator(function)
     return actual_decorator
+
 
 # ===== AUTHENTICATION & REDIRECT VIEWS =====
 # exam/views.py
@@ -491,9 +508,14 @@ def student_result_detail(request, session_id):
 
 
 # ===== TEACHER VIEWS =====
-@login_required
+@login_required(login_url='exam:login')
 @teacher_required
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def teacher_dashboard(request):
+
+    if not request.user.is_authenticated:
+        return redirect('exam:login')
+    
     user = request.user
     
     # Total Exams dibuat guru ini
@@ -843,6 +865,91 @@ def admin_stats(request):
     }
     return render(request, 'admin/admin_stats.html', context)
 
+# USER Management
+
+@login_required
+@admin_required
+def user_management_list(request):
+    users = CustomUser.objects.all().order_by('-date_joined')
+    return render(request, 'admin/user_management.html', {'users': users})
+
+
+@login_required
+@admin_required
+def admin_user_create(request):
+    if request.method == "POST":
+        form = AdminCreateUserForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "✅ User berhasil dibuat.")
+            return redirect('exam:admin_user_list')
+    else:
+        form = AdminCreateUserForm()
+    return render(request, 'admin/admin_user_create.html', {'form': form})
+
+@login_required
+@admin_required
+def admin_user_detail(request, user_id):
+    user = get_object_or_404(CustomUser, id=user_id)
+
+    # Ambil riwayat ujian user ini
+    exam_history = ExamSession.objects.filter(
+        user=user,
+        is_completed=True
+    ).select_related('exam').order_by('-end_time')
+
+    # Data untuk chart
+    chart_labels = [s.exam.title for s in exam_history[::-1]]  # urut paling lama ke terbaru
+    chart_scores = [s.score for s in exam_history[::-1]]
+
+    context = {
+        'user': user,
+        'exam_history': exam_history,
+        'chart_labels': chart_labels,
+        'chart_scores': chart_scores,
+    }
+    return render(request, 'admin/admin_user_detail.html', context)
+
+
+@login_required
+@admin_required
+def admin_user_edit(request, user_id):
+    user = get_object_or_404(CustomUser, id=user_id)
+    
+    if request.method == "POST":
+        form = AdminUserEditForm(request.POST, request.FILES, instance=user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "✅ User updated successfully.")
+            return redirect("exam:admin_user_view", user_id=user.id)
+    else:
+        form = AdminUserEditForm(instance=user)
+
+    return render(request, "admin/admin_user_form.html", {"form": form, "user": user})
+
+
+
+@login_required
+@admin_required
+def user_management_toggle(request, user_id):
+    user = get_object_or_404(CustomUser, id=user_id)
+    user.is_active = not user.is_active
+    user.save()
+    messages.success(request, "User status updated.")
+    return redirect('exam:admin_user_list')
+
+
+@login_required
+@admin_required
+def user_management_delete(request, user_id):
+    user = get_object_or_404(CustomUser, id=user_id)
+    user.delete()
+    messages.success(request, "User deleted.")
+    return redirect('exam:admin_user_list')
+
+
+# ====================================
+
 @login_required
 @admin_required
 def user_management(request):
@@ -1119,12 +1226,14 @@ def create_exam(request):
     }
     return render(request, 'exam/create_exam_form.html', context)
 
+@never_cache
 @login_required
-@student_required
 def custom_logout(request):
 
     logout(request)
-    return redirect('login')
+    request.session.flush()
+    messages.success(request, "You have been logged out.")
+    return redirect('exam:login')
 
 @login_required
 @student_required

@@ -11,6 +11,7 @@ urlpatterns = [
     
     path('login/', auth_views.LoginView.as_view(template_name='exam/login.html'), name='login'),
     path('logout/', views.custom_logout, name='logout'),
+    path('login-redirect/', views.login_redirect, name='login_redirect'),
 
     # ===== STUDENT ROUTES =====
     path('student/my-exams/', views.my_exams, name='my_exams'),
@@ -55,11 +56,17 @@ urlpatterns = [
 
 
 
-
     # ===== ADMIN ROUTES =====
     path('admin/dashboard/', views.admin_dashboard, name='admin_dashboard'),
     path('admin/stats/', views.admin_stats, name='admin_stats'),
-    path('admin/user-management/', views.user_management, name='user_management'),
+   # ========== ADMIN USER MANAGEMENT ==========
+    path('admin/users/', views.user_management_list, name='admin_user_list'),
+    path('admin/users/create/', views.admin_user_create, name='admin_user_create'),
+    path('admin/users/<int:user_id>/edit/', views.admin_user_edit, name='admin_user_edit'),
+    path('admin/users/<int:user_id>/view/', views.admin_user_detail, name='admin_user_view'),
+    path('admin/users/<int:user_id>/toggle/', views.user_management_toggle, name='admin_user_toggle'),
+    path('admin/users/<int:user_id>/delete/', views.user_management_delete, name='admin_user_delete'),
+
    
     # ===== FALLBACK REDIRECTS =====
     path('dashboard/', views.login_redirect, name='dashboard_redirect'),
