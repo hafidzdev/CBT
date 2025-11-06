@@ -1,0 +1,15 @@
+.jazzmin-body .content-wrapper .content {
+    display: flex;
+    justify-content: center;
+}
+
+#content-main {
+    width: 100%;
+    max-width: 650px; /* biar tidak kepanjangan */
+    margin-top: 30px;
+}
+
+/* Rapihin spacing form bawaan Django */
+.form-row, .fieldBox, .form-group {
+    margin-bottom: 18px;
+}

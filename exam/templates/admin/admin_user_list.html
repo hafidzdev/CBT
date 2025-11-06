@@ -1,0 +1,142 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Users List - CBT System {% endblock %}
+
+{% block content %}
+<!-- <!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50">
+</body>
+</html> -->
+<div class="user-management">
+ 
+
+  <!-- Filters -->
+<form method="get" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+  <div>
+      <label class="block text-sm font-semibold mb-1">Search</label>
+      <input type="text" name="search" value="{{ search }}" class="border rounded-lg p-2 w-full" placeholder="Search user...">
+  </div>
+
+  <div>
+      <label class="block text-sm font-semibold mb-1">User Type</label>
+      <select name="type" class="border rounded-lg p-2 w-full">
+          <option value="">All Types</option>
+          <option value="student" {% if user_type == 'student' %}selected{% endif %}>Student</option>
+          <option value="teacher" {% if user_type == 'teacher' %}selected{% endif %}>Teacher</option>
+          <option value="admin" {% if user_type == 'admin' %}selected{% endif %}>Admin</option>
+          <option value="superadmin" {% if user_type == 'superadmin' %}selected{% endif %}>Superadmin</option>
+      </select>
+  </div>
+
+  <div>
+      <label class="block text-sm font-semibold mb-1">Status</label>
+      <select name="status" class="border rounded-lg p-2 w-full">
+          <option value="">All</option>
+          <option value="active" {% if status == 'active' %}selected{% endif %}>Active</option>
+          <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>Inactive</option>
+      </select>
+  </div>
+
+  <div class="md:col-span-3">
+      <button class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold">
+          Apply Filters
+      </button>
+  </div>
+</form>
+
+
+  <!-- Table -->
+  <div class="users-table">
+    <table class="min-w-full">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="text-left px-4 py-3 text-sm font-semibold text-gray-600">User</th>
+          <th class="text-left px-4 py-3 text-sm font-semibold text-gray-600">Type</th>
+          <th class="text-left px-4 py-3 text-sm font-semibold text-gray-600">Email</th>
+          <th class="text-left px-4 py-3 text-sm font-semibold text-gray-600">Status</th>
+          <th class="text-left px-4 py-3 text-sm font-semibold text-gray-600">Last Login</th>
+          <th class="text-left px-4 py-3 text-sm font-semibold text-gray-600">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-200">
+        {% for u in page_obj.object_list %}
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-3">
+            <div>
+              <div class="font-semibold text-gray-800">{{ u.get_full_name|default:u.username }}</div>
+              <div class="text-xs text-gray-500">@{{ u.username }}</div>
+            </div>
+          </td>
+          <td class="px-4 py-3">
+            <span class="px-2 py-1 rounded text-xs font-semibold
+              {% if u.user_type == 'student' %}bg-blue-100 text-blue-800
+              {% elif u.user_type == 'teacher' %}bg-purple-100 text-purple-800
+              {% elif u.user_type == 'admin' %}bg-green-100 text-green-800
+              {% else %}bg-gray-100 text-gray-800{% endif %}">
+              {{ u.user_type|title }}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-sm text-gray-700">{{ u.email|default:"-" }}</td>
+          <td class="px-4 py-3">
+            {% if u.id in session_user_ids %}
+              <span class="bg-emerald-100 text-emerald-800 px-2 py-1 rounded-full text-xs font-semibold">Online</span>
+            {% else %}
+              <span class="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs font-semibold">
+                {% if u.is_active %}Active{% else %}Inactive{% endif %}
+              </span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3 text-sm text-gray-700">
+            {{ u.last_login|date:"M d, Y H:i"|default:"-" }}
+          </td>
+          <td class="px-4 py-3">
+            <div class="flex items-center space-x-2">
+              <a href="{% url 'exam:admin_user_detail' u.id %}" class="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700">
+                <i class="fa fa-eye"></i>
+              </a>
+              <a href="{% url 'exam:admin_user_edit' u.id %}" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">
+                <i class="fa fa-edit"></i>
+              </a>
+              <form method="post" action="{% url 'exam:admin_user_delete' u.id %}" onsubmit="return confirm('Delete this user?')">
+                {% csrf_token %}
+                <button class="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700">
+                  <i class="fa fa-trash"></i>
+                </button>
+              </form>
+              <form method="post" action="{% url 'exam:admin_user_force_logout' u.id %}" onsubmit="return confirm('Force logout this user?')">
+                {% csrf_token %}
+                <button class="bg-orange-600 text-white px-3 py-1 rounded text-sm hover:bg-orange-700" title="Force Logout">
+                  <i class="fa fa-power-off"></i>
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="px-4 py-6 text-center text-gray-500">No users found</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div class="flex justify-between items-center mt-4 text-sm">
+    <div>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</div>
+    <div class="space-x-2">
+      {% if page_obj.has_previous %}
+        <a class="px-3 py-1 bg-gray-200 rounded" href="?page={{ page_obj.previous_page_number }}&q={{ q }}&type={{ user_type }}&status={{ status }}">Prev</a>
+      {% endif %}
+      {% if page_obj.has_next %}
+        <a class="px-3 py-1 bg-gray-200 rounded" href="?page={{ page_obj.next_page_number }}&q={{ q }}&type={{ user_type }}&status={{ status }}">Next</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

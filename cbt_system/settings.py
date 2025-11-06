@@ -31,7 +31,16 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'exam.middleware.BlockLoginForAuthenticated',
 ]
+
+
+
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_COOKIE_AGE = 5  # detik, sementara aja buat test
+SESSION_SAVE_EVERY_REQUEST = True
+
+
 
 ROOT_URLCONF = 'cbt_system.urls'
 
@@ -50,9 +59,16 @@ TEMPLATES = [
         },
     },
 ]
+
+
 JAZZMIN_SETTINGS = {
     "site_title": "RPLCommunity Admin",
     "site_header": "RPLCommunity Dashboard",
+
+    "show_sidebar": True,
+    "navigation_expanded": True,
+
+
     "icons": {
         "auth": "fas fa-users-cog",
         "auth.user": "fas fa-user",
@@ -60,7 +76,36 @@ JAZZMIN_SETTINGS = {
         "exams.Exam": "fas fa-file-alt",
         "exams.Question": "fas fa-question-circle",
     },
+
+    # === INI BAGIAN SIDEBAR ===
+    "side_menu": [
+
+        # Dashboard tetap paling atas
+        {"label": "Dashboard", "url": "admin:index", "icon": "fas fa-home"},
+
+        # Menu User Management
+        {
+            "label": "User Management",
+            "icon": "fas fa-users",
+            "children": [
+                {"model": "exam.CustomUser"},
+                {"label": "Add User", "url": "exam:admin_user_create", "icon": "fas fa-user-plus"},
+                # nanti tinggal tambah Token, Log, dll disini
+            ],
+        },
+
+        # Menu untuk Exam
+        {
+            "label": "Exams",
+            "icon": "fas fa-file-alt",
+            "children": [
+                {"model": "exams.Exam"},
+                {"model": "exams.Question"},
+            ]
+        },
+    ],
 }
+
 
 
 WSGI_APPLICATION = 'cbt_system.wsgi.application'
@@ -119,14 +164,17 @@ STATICFILES_DIRS = [
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# Custom User Model
-AUTH_USER_MODEL = 'exam.CustomUser'
 
 # Login URLs
 LOGIN_URL = 'exam:login'
 LOGIN_REDIRECT_URL = 'exam:student_dashboard'
 LOGOUT_REDIRECT_URL = 'exam:login'
 LOGOUT_REDIRECT_ALLOWED_METHODS = ['GET', 'POST']
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+]
+
 
 
 # Security Settings (for production)

@@ -1,0 +1,181 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container" style="max-width: 850px; margin-top: 30px;">
+
+    <div class="card shadow-sm" style="border-radius: 12px;">
+        <div class="card-body text-center">
+
+            <!-- Avatar -->
+        {% if user.profile_picture %}
+        <img src="{{ user.profile_picture.url }}" 
+         alt="Profile Picture"
+         style="width: 90px; height: 90px; border-radius: 50%; object-fit: cover; display:block; margin:auto; margin-bottom: 12px;">
+         {% else %}
+            <div class="mx-auto mb-3"
+                style="width: 90px; height: 90px; border-radius: 50%; background: #4f46e5;
+                        color:white; display:flex; align-items:center; justify-content:center;
+                        font-size:32px; font-weight:bold;">
+                {{ user.username|first|upper }}
+            </div>
+         {% endif %}
+
+
+            <!-- Name + Username -->
+            <h2 class="mb-0" style="font-weight:700; font-size: 26px;">
+                {{ user.get_full_name|default:user.username }}
+            </h2>
+            <p class="text-muted">@{{ user.username }}</p>
+
+            <hr>
+
+            <!-- TAB NAVIGATION -->
+            <ul class="nav nav-tabs" id="userTab" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active" data-toggle="tab" href="#profileTab" role="tab">Profile</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#examTab" role="tab">Exam History</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#chartTab" role="tab">Score Progress</a>
+                </li>
+            </ul>
+
+            <div class="tab-content" style="margin-top: 25px; text-align:left;">
+
+                <!-- PROFILE TAB -->
+                <div class="tab-pane fade show active" id="profileTab" role="tabpanel">
+                    <p><strong>Email:</strong> {{ user.email|default:"-" }}</p>
+
+                    <p><strong>User Type:</strong>
+                        <span class="badge 
+                            {% if user.user_type == 'student' %} badge-success
+                            {% elif user.user_type == 'teacher' %} badge-primary
+                            {% elif user.user_type == 'admin' %} badge-danger
+                            {% else %} badge-warning {% endif %}">
+                            {{ user.get_user_type_display }}
+                        </span>
+                    </p>
+
+                    <p><strong>Status:</strong>
+                        {% if user.is_active %}
+                            <span class="badge badge-success">Active</span>
+                        {% else %}
+                            <span class="badge badge-danger">Inactive</span>
+                        {% endif %}
+                    </p>
+
+                    <p><strong>Last Login:</strong>
+                        {% if user.last_login %}
+                            {{ user.last_login|date:"M d, Y H:i" }}
+                        {% else %}
+                            <span class="text-muted">Never</span>
+                        {% endif %}
+                    </p>
+
+                    <p><strong>Registered:</strong> {{ user.date_joined|date:"M d, Y" }}</p>
+                </div>
+
+                <!-- EXAM HISTORY TAB -->
+                <div class="tab-pane fade" id="examTab" role="tabpanel">
+                    {% if exam_history %}
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Exam</th>
+                                <th>Score</th>
+                                <th>Status</th>
+                                <th>Completed</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for session in exam_history %}
+                            <tr>
+                                <td>{{ session.exam.title }}</td>
+                                <td>
+                                    <strong {% if session.score >= session.exam.passing_score %}
+                                        style="color:green;"
+                                    {% else %}
+                                        style="color:red;"
+                                    {% endif %}>
+                                        {{ session.score }}%
+                                    </strong>
+                                </td>
+                                <td>{{ session.get_status_display|default:"Completed" }}</td>
+                                <td>{{ session.end_time|date:"M d, Y H:i" }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p class="text-muted text-center mt-3">Tidak ada riwayat ujian.</p>
+                    {% endif %}
+                </div>
+
+                <!-- CHART TAB -->
+                <div class="tab-pane fade" id="chartTab" role="tabpanel">
+                    {% if chart_scores %}
+                        <canvas id="scoreChart" height="120"></canvas>
+                        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+                        <script>
+                        const ctx = document.getElementById('scoreChart').getContext('2d');
+                        new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels: {{ chart_labels|safe }},
+                                datasets: [{
+                                    label: 'Score',
+                                    data: {{ chart_scores|safe }},
+                                    borderColor: '#4f46e5',
+                                    backgroundColor: 'rgba(79,70,229,0.2)',
+                                    borderWidth: 2,
+                                    pointRadius: 4,
+                                    pointBackgroundColor: '#4f46e5'
+                                }]
+                            },
+                            options: {
+                                scales: { y: { beginAtZero: true, max: 100 }}
+                            }
+                        });
+                        </script>
+                    {% else %}
+                    <p class="text-muted text-center mt-3">Belum ada nilai untuk ditampilkan.</p>
+                    {% endif %}
+                </div>
+
+              </div>
+
+            <hr>
+
+            <!-- ACTION BUTTONS -->
+            <div class="d-flex justify-content-between gap-2 mt-2">
+
+                <a href="{% url 'exam:admin_user_edit' user.id %}" class="btn btn-primary w-100">
+                    <i class="fas fa-edit"></i> Edit
+                </a>
+
+                {% if user.is_active %}
+                <a href="{% url 'exam:admin_user_toggle' user.id %}" class="btn btn-warning w-100">
+                    <i class="fas fa-ban"></i> Deactivate
+                </a>
+                {% else %}
+                <a href="{% url 'exam:admin_user_toggle' user.id %}" class="btn btn-success w-100">
+                    <i class="fas fa-check"></i> Activate
+                </a>
+                {% endif %}
+
+                <a href="{% url 'exam:admin_user_delete' user.id %}"
+                   onclick="return confirm('Yakin mau hapus user ini?');"
+                   class="btn btn-danger w-100">
+                    <i class="fas fa-trash"></i> Delete
+                </a>
+
+            </div>
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}
