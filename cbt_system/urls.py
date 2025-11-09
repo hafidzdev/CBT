@@ -6,7 +6,7 @@ from django.contrib.auth import views as auth_views
 
 urlpatterns = [
     # --- ADMIN CUSTOM SITE ---
-    path('admin/', admin_site.urls),
+    path('panel/', admin_site.urls),
 
     # --- MAIN APP ROUTES (EXAM SYSTEM) ---
     path('', include(('exam.urls', 'exam'), namespace='exam')),

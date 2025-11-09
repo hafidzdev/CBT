@@ -4,6 +4,9 @@ from django.utils import timezone
 from django.core.validators import MinValueValidator, MaxValueValidator
 import uuid
 from django.utils.text import slugify
+from datetime import timedelta
+import secrets
+import string
 
 # Custom User Model untuk extended functionality
 
@@ -85,6 +88,7 @@ class Exam(models.Model):
     # Basic Information
     exam_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=False, null=True, blank=True)
     title = models.CharField(max_length=200)
+    max_score = models.IntegerField(default=100)
     description = models.TextField()
     exam_type = models.CharField(max_length=20, choices=EXAM_TYPES, default='quiz')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
@@ -473,3 +477,68 @@ class StudentAnswer(models.Model):
 
     def __str__(self):
         return f"{self.session.user} - {self.question.id}"
+
+class ExamToken(models.Model):
+    TOKEN_STATUS = [
+        ('active', 'Active'),
+        ('expired', 'Expired'),
+        ('revoked', 'Revoked'),
+    ]
+    
+    token = models.CharField(max_length=6, unique=True, db_index=True)
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='tokens')
+    status = models.CharField(max_length=10, choices=TOKEN_STATUS, default='active')
+    is_global = models.BooleanField(default=False)
+    created_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used_count = models.IntegerField(default=0)
+    max_usage = models.IntegerField(default=100)  # Maximum usage before expiry
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.token} - {self.exam.title}"
+    
+    @property
+    def is_expired(self):
+        return timezone.now() > self.expires_at or self.used_count >= self.max_usage
+    
+    @property
+    def time_remaining(self):
+        if self.is_expired:
+            return timedelta(0)
+        return self.expires_at - timezone.now()
+    
+    @classmethod
+    def generate_token(cls):
+        """Generate random 6-character alphanumeric token"""
+        characters = string.ascii_uppercase + string.digits
+        return ''.join(secrets.choice(characters) for _ in range(6))
+    
+    @classmethod
+    def create_token(cls, exam, created_by, duration_minutes=15, is_global=False, max_usage=100):
+        """Create new token with automatic expiry"""
+        token = cls.generate_token()
+        expires_at = timezone.now() + timedelta(minutes=duration_minutes)
+        
+        return cls.objects.create(
+            token=token,
+            exam=exam,
+            created_by=created_by,
+            expires_at=expires_at,
+            is_global=is_global,
+            max_usage=max_usage
+        )
+    
+    def renew_token(self, duration_minutes=15):
+        """Renew token expiry time"""
+        self.expires_at = timezone.now() + timedelta(minutes=duration_minutes)
+        self.status = 'active'
+        self.save()
+    
+    def revoke_token(self):
+        """Manually revoke token"""
+        self.status = 'revoked'
+        self.save()

@@ -156,7 +156,7 @@
 
     <script>
         function refreshTokens() {
-            fetch('{% url "get_active_tokens" %}')
+            fetch('{% url "exam:get_active_tokens" %}')
                 .then(response => response.json())
                 .then(data => {
                     const container = document.getElementById('activeTokens');
