@@ -868,9 +868,45 @@ def admin_stats(request):
 
 @login_required
 @admin_required
+def admin_panel(request):
+    users = CustomUser.objects.all().order_by('-date_joined')
+
+    context = {
+        "users": users,
+        "count_students": users.filter(user_type="student").count(),
+        "count_teachers": users.filter(user_type="teacher").count(),
+        "count_admins": users.filter(user_type="admin").count(),
+        "count_total": users.count(),
+    }
+ 
+    return render(request, "admin/admin_panel.html", context)
+    
+# ==========
+
+@login_required
+@admin_required
 def user_management_list(request):
     users = CustomUser.objects.all().order_by('-date_joined')
-    return render(request, 'admin/user_management.html', {'users': users})
+
+    role = request.GET.get("role")
+    status = request.GET.get("status")
+
+    if role and role != "":
+        users = users.filter(user_type=role)
+
+    if status == "active":
+        users = users.filter(is_active=True)
+    elif status == "inactive":
+        users = users.filter(is_active=False)
+
+    context = {
+        "users": users,
+        "selected_role": role,
+        "selected_status": status,
+    }
+ 
+    return render(request, "admin/user_management.html", context)
+
 
 
 @login_required
@@ -920,7 +956,7 @@ def admin_user_edit(request, user_id):
         if form.is_valid():
             form.save()
             messages.success(request, "✅ User updated successfully.")
-            return redirect("exam:admin_user_view", user_id=user.id)
+            return redirect("exam:admin_user_list")
     else:
         form = AdminUserEditForm(instance=user)
 
