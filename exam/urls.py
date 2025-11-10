@@ -56,12 +56,14 @@ urlpatterns = [
     path('admin/dashboard/', views.admin_dashboard, name='admin_dashboard'),
     path('admin/stats/', views.admin_stats, name='admin_stats'),
    # ========== ADMIN USER MANAGEMENT ==========
+    path('admin/panel/', views.admin_panel, name='admin_panel'),
     path('admin/users/', views.user_management_list, name='admin_user_list'),
     path('admin/users/create/', views.admin_user_create, name='admin_user_create'),
     path('admin/users/<int:user_id>/edit/', views.admin_user_edit, name='admin_user_edit'),
     path('admin/users/<int:user_id>/view/', views.admin_user_detail, name='admin_user_view'),
     path('admin/users/<int:user_id>/toggle/', views.user_management_toggle, name='admin_user_toggle'),
     path('admin/users/<int:user_id>/delete/', views.user_management_delete, name='admin_user_delete'),
+
 
    
     # ===== FALLBACK REDIRECTS =====
