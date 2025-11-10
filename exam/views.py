@@ -16,15 +16,14 @@ from .decorators import student_required
 from exam.decorators import teacher_required
 from django.contrib.auth import logout
 from django.views.decorators.csrf import csrf_exempt
+from exam.models import ExamToken
+from .decorators import admin_required
 from django.views.decorators.cache import never_cache
 from functools import wraps
 from django.views.decorators.cache import cache_control
 from django.contrib.auth import get_user_model
 from django.core.paginator import Paginator
 from django.contrib.sessions.models import Session
-
-
-
 import json
 import csv
 import io
@@ -962,6 +961,22 @@ def admin_user_edit(request, user_id):
 
     return render(request, "admin/admin_user_form.html", {"form": form, "user": user})
 
+def download_user_template(request):
+    # Buat respons sebagai file CSV yang bisa diunduh
+    response = HttpResponse(
+        content_type='text/csv',
+        headers={'Content-Disposition': 'attachment; filename="user_import_template.csv"'},
+    )
+
+    writer = csv.writer(response)
+    # Header kolom (sesuai dengan model CustomUser)
+    writer.writerow(['username', 'email', 'first_name', 'last_name', 'role', 'password'])
+
+    # Tambahkan contoh data
+    writer.writerow(['john_doe', 'john@example.com', 'John', 'Doe', 'student', '123456'])
+    writer.writerow(['teacher_01', 'teacher@example.com', 'Jane', 'Smith', 'teacher', 'password123'])
+
+    return response
 
 
 @login_required
@@ -984,38 +999,75 @@ def user_management_delete(request, user_id):
 
 
 # ====================================
+def is_admin(user):
+    return user.is_authenticated and (user.is_staff or user.is_superuser)
+
 
 @login_required
-@admin_required
+@user_passes_test(is_admin)
 def user_management(request):
-    """User management page untuk admin"""
+    """User management view for admin"""
     users = CustomUser.objects.all().order_by('-date_joined')
     
-    # Filter functionality
-    user_type_filter = request.GET.get('user_type')
-    status_filter = request.GET.get('status')
-    search_query = request.GET.get('search')
+    # Filters
+    user_type = request.GET.get('user_type')
+    status = request.GET.get('status')
+    date = request.GET.get('date')
     
-    if user_type_filter:
-        users = users.filter(user_type=user_type_filter)
-    
-    if status_filter == 'active':
+    if user_type:
+        users = users.filter(user_type=user_type)
+    if status == 'active':
         users = users.filter(is_active=True)
-    elif status_filter == 'inactive':
+    elif status == 'inactive':
         users = users.filter(is_active=False)
+    if date:
+        users = users.filter(date_joined__date=date)
     
-    if search_query:
-        users = users.filter(
-            Q(username__icontains=search_query) |
-            Q(email__icontains=search_query) |
-            Q(first_name__icontains=search_query) |
-            Q(last_name__icontains=search_query)
-        )
+    # Statistics
+    total_users = users.count()
+    student_count = users.filter(user_type='student').count()
+    teacher_count = users.filter(user_type='teacher').count()
+    admin_count = users.filter(user_type='admin').count()
+    
+    # Pagination
+    paginator = Paginator(users, 25)  # 25 users per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
     
     context = {
-        'users': users,
+        'users': page_obj,
+        'total_users': total_users,
+        'student_count': student_count,
+        'teacher_count': teacher_count,
+        'admin_count': admin_count,
+        'title': 'User Management'
     }
-    return render(request, 'admin/user_management.html', context)
+    
+    return render(request, 'exam/admin/user_management.html', context)
+
+@login_required
+@user_passes_test(is_admin)
+def export_users(request):
+    """Export users to CSV"""
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="users.csv"'
+    
+    writer = csv.writer(response)
+    writer.writerow(['Username', 'Email', 'First Name', 'Last Name', 'User Type', 'Status', 'Registration Date'])
+    
+    users = CustomUser.objects.all()
+    for user in users:
+        writer.writerow([
+            user.username,
+            user.email,
+            user.first_name,
+            user.last_name,
+            user.get_user_type_display(),
+            'Active' if user.is_active else 'Inactive',
+            user.date_joined.strftime('%Y-%m-%d')
+        ])
+    
+    return response
 
 # ===== FALLBACK VIEWS (jika decorator masih error) =====
 def teacher_dashboard_fallback(request):
@@ -1336,89 +1388,157 @@ def exam_token_access(request):
 
 # exam/views.py - tambahkan view untuk validasi token
 @login_required
-@student_required
+@admin_required
+def token_management(request):
+    """Admin panel untuk mengelola token"""
+    tokens = ExamToken.objects.select_related('exam', 'created_by').all()
+    exams = Exam.objects.filter(is_active=True)
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'create_token':
+            exam_id = request.POST.get('exam_id')
+            duration = int(request.POST.get('duration', 15))
+            is_global = request.POST.get('is_global') == 'true'
+            max_usage = int(request.POST.get('max_usage', 100))
+            
+            exam = get_object_or_404(Exam, id=exam_id)
+            
+            # Deactivate existing active tokens for this exam
+            ExamToken.objects.filter(
+                exam=exam, 
+                status='active'
+            ).update(status='expired')
+            
+            # Create new token
+            token = ExamToken.create_token(
+                exam=exam,
+                created_by=request.user,
+                duration_minutes=duration,
+                is_global=is_global,
+                max_usage=max_usage
+            )
+            
+            messages.success(request, f'Token {token.token} created successfully!')
+            return redirect('exam:token_management')
+        
+        elif action == 'revoke_token':
+            token_id = request.POST.get('token_id')
+            token = get_object_or_404(ExamToken, id=token_id)
+            token.revoke_token()
+            messages.success(request, f'Token {token.token} revoked!')
+            return redirect('exam:token_management')
+        
+        elif action == 'renew_token':
+            token_id = request.POST.get('token_id')
+            duration = int(request.POST.get('duration', 15))
+            token = get_object_or_404(ExamToken, id=token_id)
+            token.renew_token(duration)
+            messages.success(request, f'Token {token.token} renewed!')
+            return redirect('exam:token_management')
+    
+    context = {
+        'tokens': tokens,
+        'exams': exams,
+        'title': 'Token Management'
+    }
+    return render(request, 'admin/token_management.html', context)
+
+
+@csrf_exempt
 def validate_exam_token(request):
-    """View untuk validasi token dan akses ujian"""
+    """Validate token untuk student access"""
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            token = data.get('token', '').strip().upper()
+            token_value = data.get('token', '').strip().upper()
             
-            if len(token) != 6:
+            if len(token_value) != 6:
                 return JsonResponse({
                     'valid': False,
                     'message': 'Token must be 6 characters long'
                 })
             
-            # Cari exam dengan token yang valid
-            exam = Exam.objects.filter(
-                access_token=token,
-                is_active=True,
-                status='published'
-            ).first()
+            # Cari token yang aktif dan belum expired
+            token = ExamToken.objects.filter(
+                token=token_value,
+                status='active'
+            ).select_related('exam').first()
             
-            if not exam:
+            if not token:
                 return JsonResponse({
                     'valid': False,
-                    'message': 'Invalid token or exam not found'
+                    'message': 'Invalid token'
                 })
             
-            # Cek expiry token
-            if not exam.is_token_valid():
+            if token.is_expired:
+                token.status = 'expired'
+                token.save()
                 return JsonResponse({
                     'valid': False,
                     'message': 'Token has expired'
                 })
             
-            # Cek waktu ujian
-            now = timezone.now()
-            if now < exam.start_time:
-                return JsonResponse({
-                    'valid': False,
-                    'message': f'Exam starts at {exam.start_time.strftime("%Y-%m-%d %H:%M")}'
-                })
+            # Check jika token global atau untuk user tertentu
+            if not token.is_global:
+                # Tambahkan logic untuk check user specific access jika needed
+                pass
             
-            if now > exam.end_time:
-                return JsonResponse({
-                    'valid': False,
-                    'message': 'Exam has ended'
-                })
-            
-            # Cek permission user
-            if (exam.allowed_departments.exists() and 
-                not exam.allowed_departments.filter(id=request.user.department.id).exists()):
-                return JsonResponse({
-                    'valid': False,
-                    'message': 'You are not allowed to access this exam'
-                })
-            
-            # Cek max attempts
-            completed_attempts = ExamSession.objects.filter(
-                user=request.user,
-                exam=exam,
-                is_completed=True
-            ).count()
-            
-            if completed_attempts >= exam.max_attempts:
-                return JsonResponse({
-                    'valid': False,
-                    'message': f'Maximum attempts ({exam.max_attempts}) reached for this exam'
-                })
+            # Update usage count
+            token.used_count += 1
+            token.save()
             
             return JsonResponse({
                 'valid': True,
-                'exam_id': exam.id,
-                'exam_title': exam.title,
-                'message': 'Token validated successfully'
+                'exam_id': token.exam.id,
+                'exam_title': token.exam.title,
+                'time_remaining': str(token.time_remaining).split('.')[0]
             })
             
         except Exception as e:
             return JsonResponse({
                 'valid': False,
-                'message': f'Validation error: {str(e)}'
+                'message': 'Validation error'
             })
     
-    return JsonResponse({'valid': False, 'message': 'Invalid request method'})
+    return JsonResponse({'valid': False, 'message': 'Invalid request'})
+
+def get_active_tokens(request):
+    """Get active tokens untuk dashboard"""
+    active_tokens = ExamToken.objects.filter(
+        status='active',
+        expires_at__gt=timezone.now()
+    ).select_related('exam')
+    
+    tokens_data = []
+    for token in active_tokens:
+        tokens_data.append({
+            'token': token.token,
+            'exam_title': token.exam.title,
+            'expires_at': token.expires_at.isoformat(),
+            'time_remaining': str(token.time_remaining).split('.')[0],
+            'used_count': token.used_count,
+            'max_usage': token.max_usage,
+            'is_global': token.is_global
+        })
+    
+    return JsonResponse({'tokens': tokens_data})
+
+@login_required
+@admin_required
+def auto_rotate_tokens(request):
+    """Auto rotate tokens yang sudah expired"""
+    expired_tokens = ExamToken.objects.filter(
+        status='active',
+        expires_at__lte=timezone.now()
+    )
+    
+    expired_count = expired_tokens.count()
+    expired_tokens.update(status='expired')
+    
+    messages.success(request, f'Rotated {expired_count} expired tokens')
+    return redirect('token_management')
 
 
 

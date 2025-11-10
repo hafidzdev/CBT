@@ -6,20 +6,22 @@
 {% block extrahead %}
 {{ block.super }}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<!-- ✅ Ganti CDN SweetAlert2 -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js"></script>
-<link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.min.css" rel="stylesheet">
+
+<!-- ✅ SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
 {% endblock %}
 
 {% block admin_body %}
 
 <div class="user-management max-w-7xl mx-auto space-y-8">
 
-    <!-- 🔥 FILTER SECTION -->
+    <!-- FILTER -->
     <form method="get" class="bg-white shadow rounded-2xl p-6 flex flex-wrap items-end gap-4">
+
         <div class="flex flex-col">
             <label class="text-sm font-semibold text-gray-600 mb-1">Role</label>
-            <select name="role" class="border rounded-lg px-3 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+            <select name="role" class="border rounded-lg px-3 py-2 text-sm">
                 <option value="">All Roles</option>
                 <option value="student" {% if selected_role == "student" %}selected{% endif %}>Student</option>
                 <option value="teacher" {% if selected_role == "teacher" %}selected{% endif %}>Teacher</option>
@@ -30,7 +32,7 @@
 
         <div class="flex flex-col">
             <label class="text-sm font-semibold text-gray-600 mb-1">Status</label>
-            <select name="status" class="border rounded-lg px-3 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+            <select name="status" class="border rounded-lg px-3 py-2 text-sm">
                 <option value="">All Status</option>
                 <option value="active" {% if selected_status == "active" %}selected{% endif %}>Active</option>
                 <option value="inactive" {% if selected_status == "inactive" %}selected{% endif %}>Inactive</option>
@@ -46,13 +48,11 @@
             Reset
         </a>
 
-        <div class="flex flex-col">
-            <a href="{% url 'exam:admin_user_create' %}"
-               class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg shadow-sm transition">
-                <i class="fas fa-user-plus mr-2 text-sm"></i>
-                Create User
-            </a>
-        </div>
+        <a href="{% url 'exam:admin_user_create' %}"
+           class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg">
+            <i class="fas fa-user-plus mr-2 text-sm"></i> Create User
+        </a>
+
     </form>
 
     <!-- TABLE -->
@@ -60,10 +60,11 @@
 
         <div class="flex justify-between items-center border-b px-6 py-4">
             <h2 class="text-xl font-semibold text-gray-800">User Management</h2>
+
             <div class="relative">
                 <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
                 <input type="text" id="searchInput" placeholder="Search users..."
-                       class="pl-10 pr-4 py-2 border rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                       class="pl-10 pr-4 py-2 border rounded-lg text-sm">
             </div>
         </div>
 
@@ -85,7 +86,7 @@
                 {% for user in users %}
                 <tr class="border-b hover:bg-gray-50">
 
-                    <td class="p-3"><input type="checkbox" class="user-checkbox" value="{{ user.id }}"></td>
+                    <td class="p-3"><input type="checkbox" class="user-checkbox"></td>
 
                     <td class="p-3 flex items-center gap-3">
                         {% if user.profile_picture %}
@@ -95,7 +96,6 @@
                                 {{ user.username|first|upper }}
                             </div>
                         {% endif %}
-
                         <div>
                             <div class="font-semibold">{{ user.get_full_name|default:user.username }}</div>
                             <div class="text-xs text-gray-500">@{{ user.username }}</div>
@@ -124,150 +124,76 @@
 
                     <td class="p-3 flex gap-3">
 
-                        <a href="{% url 'exam:admin_user_edit' user.id %}" class="text-indigo-600 hover:text-indigo-800" title="Edit">
+                        <a href="{% url 'exam:admin_user_edit' user.id %}" class="text-indigo-600 hover:text-indigo-800">
                             <i class="fas fa-edit"></i>
                         </a>
 
-                        <a href="{% url 'exam:admin_user_view' user.id %}" class="text-green-600 hover:text-green-800" title="View">
+                        <a href="{% url 'exam:admin_user_view' user.id %}" class="text-green-600 hover:text-green-800">
                             <i class="fas fa-eye"></i>
                         </a>
 
-                        <button type="button"
-                                class="toggle-btn text-yellow-600 hover:text-yellow-800"
-                                data-id="{{ user.id }}"
-                                data-active="{{ user.is_active|yesno:'true,false' }}"
-                                title="{% if user.is_active %}Deactivate{% else %}Activate{% endif %}">
-                            {% if user.is_active %}
-                                <i class="fas fa-ban"></i>
-                            {% else %}
-                                <i class="fas fa-check"></i>
-                            {% endif %}
+                        <button type="button" class="toggle-btn text-yellow-600 hover:text-yellow-800"
+                            data-id="{{ user.id }}" data-active="{{ user.is_active|yesno:'true,false' }}">
+                            {% if user.is_active %}<i class="fas fa-ban"></i>{% else %}<i class="fas fa-check"></i>{% endif %}
                         </button>
 
-                        <button type="button"
-                                class="delete-btn text-red-600 hover:text-red-800"
-                                data-id="{{ user.id }}"
-                                title="Delete">
+                        <button type="button" class="delete-btn text-red-600 hover:text-red-800" data-id="{{ user.id }}">
                             <i class="fas fa-trash"></i>
                         </button>
 
                     </td>
                 </tr>
+                {% empty %}
+                <tr><td colspan="7" class="p-6 text-center text-gray-500">No users found.</td></tr>
                 {% endfor %}
                 </tbody>
-
             </table>
         </div>
     </div>
-
 </div>
 
-<!-- ✅ Load SweetAlert2 di sini kalau di extrahead gagal -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js"></script>
-
 <script>
-// ✅ FIXED VERSION - Menunggu DOM ready sebelum attach event
-document.addEventListener("DOMContentLoaded", function() {
-    
-    // Cek apakah Swal sudah loaded
-    if (typeof Swal === 'undefined') {
-        console.error('❌ SweetAlert2 not loaded!');
-        alert('Error: SweetAlert2 library failed to load. Please refresh the page.');
-        return;
-    }
-    
-    console.log("✅ SweetAlert2 loaded successfully");
-    console.log("✅ User Management Script Loaded");
-    
-    // ========================================
-    // Toggle User Status (Activate/Deactivate)
-    // ========================================
-    document.querySelectorAll(".toggle-btn").forEach(function(btn) {
-        btn.addEventListener("click", function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const id = this.dataset.id;
-            const isActive = this.dataset.active === "true";
-            
-            console.log("🔄 Toggle clicked for user:", id, "Currently active:", isActive);
-            
-            Swal.fire({
-                title: isActive ? "Deactivate this user?" : "Activate this user?",
-                text: isActive ? "User will be unable to login" : "User will be able to login",
-                icon: "warning",
-                showCancelButton: true,
-                confirmButtonColor: isActive ? "#d33" : "#10b981",
-                cancelButtonColor: "#6b7280",
-                confirmButtonText: isActive ? "Yes, Deactivate" : "Yes, Activate",
-                cancelButtonText: "Cancel"
-            }).then(function(result) {
-                if (result.isConfirmed) {
-                    // Redirect ke URL toggle
-                    window.location.href = "{% url 'exam:admin_user_toggle' 0 %}".replace("0", id);
-                }
-            });
-        });
+// ✅ Search
+document.getElementById("searchInput").addEventListener("keyup", function() {
+    const filter = this.value.toLowerCase();
+    document.querySelectorAll("tbody tr").forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(filter) ? "" : "none";
     });
-    
-    // ========================================
-    // Delete User
-    // ========================================
-    document.querySelectorAll(".delete-btn").forEach(function(btn) {
-        btn.addEventListener("click", function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const id = this.dataset.id;
-            
-            console.log("🗑️ Delete clicked for user:", id);
-            
-            Swal.fire({
-                title: "Delete this user?",
-                text: "This action cannot be undone!",
-                icon: "error",
-                showCancelButton: true,
-                confirmButtonColor: "#d33",
-                cancelButtonColor: "#6b7280",
-                confirmButtonText: "Yes, Delete",
-                cancelButtonText: "Cancel"
-            }).then(function(result) {
-                if (result.isConfirmed) {
-                    // Redirect ke URL delete
-                    window.location.href = "{% url 'exam:admin_user_delete' 0 %}".replace("0", id);
-                }
-            });
-        });
+});
+
+// ✅ Toggle User
+document.addEventListener("click", e => {
+    const btn = e.target.closest(".toggle-btn");
+    if (!btn) return;
+    const id = btn.dataset.id;
+    const active = btn.dataset.active === "true";
+
+    Swal.fire({
+        title: active ? "Deactivate this user?" : "Activate this user?",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: active ? "#d33" : "#10b981",
+        cancelButtonText: "Cancel"
+    }).then(res => {
+        if (res.isConfirmed) window.location.href = "{% url 'exam:admin_user_toggle' 0 %}".replace("0", id);
     });
-    
-    // ========================================
-    // Search Functionality
-    // ========================================
-    const searchInput = document.getElementById("searchInput");
-    if (searchInput) {
-        searchInput.addEventListener("keyup", function() {
-            const filter = this.value.toLowerCase();
-            const rows = document.querySelectorAll("tbody tr");
-            
-            rows.forEach(function(row) {
-                const text = row.textContent.toLowerCase();
-                row.style.display = text.includes(filter) ? "" : "none";
-            });
-        });
-    }
-    
-    // ========================================
-    // Select All Checkbox
-    // ========================================
-    const selectAll = document.getElementById("selectAll");
-    if (selectAll) {
-        selectAll.addEventListener("change", function() {
-            const checkboxes = document.querySelectorAll(".user-checkbox");
-            checkboxes.forEach(function(checkbox) {
-                checkbox.checked = selectAll.checked;
-            });
-        });
-    }
+});
+
+// ✅ Delete
+document.addEventListener("click", e => {
+    const btn = e.target.closest(".delete-btn");
+    if (!btn) return;
+    const id = btn.dataset.id;
+
+    Swal.fire({
+        title: "Delete this user?",
+        icon: "error",
+        showCancelButton: true,
+        confirmButtonColor: "#d33",
+        cancelButtonText: "Cancel"
+    }).then(res => {
+        if (res.isConfirmed) window.location.href = "{% url 'exam:admin_user_delete' 0 %}".replace("0", id);
+    });
 });
 </script>
 

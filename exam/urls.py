@@ -24,17 +24,12 @@ urlpatterns = [
     path('api/validate-token/', views.validate_exam_token, name='validate_exam_token'),
     path('student/validate-token/', views.validate_exam_token, name='validate_exam_token'),
     path('student/exam/token/<str:token>/', views.access_exam_with_token, name='access_exam_with_token'),
-
     path('student/results/', views.student_results, name='student_results'),
     path('student/results/<int:session_id>/', views.student_result_detail, name='student_result_detail'),
-
-
      # Error pages
     path('exam/not-available/', views.exam_not_available, name='exam_not_available'),
     path('exam/ended/', views.exam_ended, name='exam_ended'),
     path('exam/access-denied/', views.exam_access_denied, name='exam_access_denied'),
-    
-
     # ===== TEACHER ROUTES =====
     path('teacher/dashboard/', views.teacher_dashboard, name='teacher_dashboard'),
     path('teacher/simple-dashboard/', views.simple_teacher_dashboard, name='simple_teacher_dashboard'),
@@ -50,11 +45,15 @@ urlpatterns = [
     path('question-banks/download-template/', views.download_question_bank_template, name='download_question_bank_template'),
     path('download-template/', views.download_question_bank_template, name='download_question_bank_template'),
     path('teacher/exams/create/', views.create_exam, name='create_exam'),
-
-
+    path('get-active-tokens/', views.get_active_tokens, name='get_active_tokens'),
     # ===== ADMIN ROUTES =====
     path('admin/dashboard/', views.admin_dashboard, name='admin_dashboard'),
-    path('admin/stats/', views.admin_stats, name='admin_stats'),
+    path('stats/', views.admin_stats, name='admin_stats'),
+    path('admin/tokens/', views.token_management, name='token_management'),
+    path('api/validate-token/', views.validate_exam_token, name='validate_exam_token'),
+    path('api/active-tokens/', views.get_active_tokens, name='get_active_tokens'),
+    path('admin/tokens/rotate/', views.auto_rotate_tokens, name='auto_rotate_tokens'),
+    
    # ========== ADMIN USER MANAGEMENT ==========
     path('admin/panel/', views.admin_panel, name='admin_panel'),
     path('admin/users/', views.user_management_list, name='admin_user_list'),
@@ -63,12 +62,16 @@ urlpatterns = [
     path('admin/users/<int:user_id>/view/', views.admin_user_detail, name='admin_user_view'),
     path('admin/users/<int:user_id>/toggle/', views.user_management_toggle, name='admin_user_toggle'),
     path('admin/users/<int:user_id>/delete/', views.user_management_delete, name='admin_user_delete'),
+    path('admin/users/download-template/', views.download_user_template, name='admin_user_download'),
+
+
 
 
    
     # ===== FALLBACK REDIRECTS =====
-    path('dashboard/', views.login_redirect, name='dashboard_redirect'),
     path('teacher/', lambda request: redirect('exam:teacher_dashboard')),
     path('student/', lambda request: redirect('exam:my-exams')),
     path('admin/', lambda request: redirect('exam:admin_dashboard')),
+
+
 ]
