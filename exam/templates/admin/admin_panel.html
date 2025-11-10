@@ -1,0 +1,74 @@
+{% extends "admin/admin_base.html" %}
+{% load static %}
+
+{% block title %} Admin Dashboard - CBT System{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block admin_body %}
+
+<div class="user-management max-w-7xl mx-auto space-y-8">
+
+    <!-- Stats -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="bg-white border-l-4 border-indigo-600 rounded-2xl shadow p-6 text-center">
+            <h3 class="text-xs font-semibold uppercase text-gray-500 mb-1">Total Users</h3>
+            <div class="text-3xl font-bold text-gray-800">{{ count_total }}</div>
+        </div>
+        <div class="bg-white border-l-4 border-green-600 rounded-2xl shadow p-6 text-center">
+            <h3 class="text-xs font-semibold uppercase text-gray-500 mb-1">Students</h3>
+            <div class="text-3xl font-bold text-gray-800">{{ count_students }}</div>
+        </div>
+        <div class="bg-white border-l-4 border-yellow-500 rounded-2xl shadow p-6 text-center">
+            <h3 class="text-xs font-semibold uppercase text-gray-500 mb-1">Teachers</h3>
+            <div class="text-3xl font-bold text-gray-800">{{ count_teachers }}</div>
+        </div>
+        <div class="bg-white border-l-4 border-red-500 rounded-2xl shadow p-6 text-center">
+            <h3 class="text-xs font-semibold uppercase text-gray-500 mb-1">Admins</h3>
+            <div class="text-3xl font-bold text-gray-800">{{ count_admins }}</div>
+        </div>
+    </div>
+
+
+    <!-- Actions -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <button onclick="openModal('addUserModal')" class="bg-white shadow rounded-2xl p-6 text-center border hover:shadow-lg transition">
+            <div class="text-3xl mb-2">👤</div>
+            <p class="font-semibold text-gray-800">Add New User</p>
+        </button>
+
+        <button onclick="openModal('bulkImportModal')" class="bg-white shadow rounded-2xl p-6 text-center border hover:shadow-lg transition">
+            <div class="text-3xl mb-2">📥</div>
+            <p class="font-semibold text-gray-800">Bulk Import</p>
+        </button>
+
+        <button onclick="exportUsers()" class="bg-white shadow rounded-2xl p-6 text-center border hover:shadow-lg transition">
+            <div class="text-3xl mb-2">📤</div>
+            <p class="font-semibold text-gray-800">Export Users</p>
+        </button>
+
+        <button onclick="openModal('sendNotificationModal')" class="bg-white shadow rounded-2xl p-6 text-center border hover:shadow-lg transition">
+            <div class="text-3xl mb-2">🔔</div>
+            <p class="font-semibold text-gray-800">Send Notification</p>
+        </button>
+    </div>
+
+    <!-- Charts -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white shadow rounded-2xl p-6">
+            <h3 class="text-gray-800 font-semibold mb-4">User Distribution</h3>
+            <canvas id="userDistributionChart"></canvas>
+        </div>
+        <div class="bg-white shadow rounded-2xl p-6">
+            <h3 class="text-gray-800 font-semibold mb-4">User Activity</h3>
+            <canvas id="userActivityChart"></canvas>
+        </div>
+    </div>
+
+  
+
+</div>
+{% endblock %}
