@@ -1,135 +1,148 @@
-{% extends "admin/base_site.html" %}
+{% extends "admin/admin_base.html" %}
 {% load static %}
+{% load form_tags %}
 
-{% block content %}
+{% block title %}Edit User - {{ user.username }}{% endblock %}
 
-<div class="user-edit-wrapper">
-  <div class="user-edit-card">
+{% block admin_body %}
 
-    <h2 class="title">Edit User</h2>
+<!-- Back Button -->
+<div class="mb-4">
+    <a href="{% url 'exam:admin_user_list' %}"
+       class="inline-flex items-center px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-semibold rounded-lg transition">
+        <i class="fas fa-arrow-left mr-2"></i> Back to User Management
+    </a>
+</div>
 
-    <form method="post" enctype="multipart/form-data">
-      {% csrf_token %}
+<div class="max-w-4xl mx-auto bg-white shadow rounded-2xl p-8 space-y-6">
 
-      {% if form.non_field_errors %}
-      <div class="error-box">{{ form.non_field_errors }}</div>
-      {% endif %}
+    <h2 class="text-2xl font-bold text-center text-gray-800">Edit User</h2>
 
-      <div class="form-group">
-        <label>Username</label>
-        {{ form.username }}
-      </div>
+    <!-- 🔥 Alert Besar Jika Ada Error -->
+    {% if form.errors %}
+    <div class="bg-red-100 border border-red-300 text-red-700 p-4 rounded-lg font-semibold text-sm">
+        ⚠ Beberapa data tidak valid. Silakan periksa kembali form di bawah.
+    </div>
+    {% endif %}
 
-      <div class="form-group">
-        <label>New Password (optional)</label>
-        {{ form.password1 }}
-      </div>
+    <!-- Non-field error -->
+    {% if form.non_field_errors %}
+    <div class="bg-red-100 border border-red-300 text-red-700 p-3 rounded-lg font-semibold text-sm">
+        {{ form.non_field_errors.0 }}
+    </div>
+    {% endif %}
 
-      <div class="form-group">
-        <label>Confirm New Password</label>
-        {{ form.password2 }}
-      </div>
 
-      <div class="form-group">
-        <label>First Name</label>
-        {{ form.first_name }}
-      </div>
+    <form method="post" enctype="multipart/form-data" class="space-y-5">
+        {% csrf_token %}
 
-      <div class="form-group">
-        <label>Last Name</label>
-        {{ form.last_name }}
-      </div>
+        <!-- Username -->
+        <div>
+            <label class="block font-semibold mb-1">Username</label>
+            {{ form.username|add_class:"w-full border border-gray-300 rounded-lg p-3" }}
+            {% if form.username.errors %}
+            <p class="text-red-600 font-semibold text-sm mt-1">{{ form.username.errors.0 }}</p>
+            {% endif %}
+        </div>
 
-      <div class="form-group">
-        <label>Email</label>
-        {{ form.email }}
-      </div>
+        <!-- Password -->
+        <div>
+            <label class="block font-semibold mb-1">New Password (optional)</label>
+            {{ form.password1|add_class:"w-full border border-gray-300 rounded-lg p-3" }}
+            {% if form.password1.errors %}
+            <p class="text-red-600 font-semibold text-sm mt-1">{{ form.password1.errors.0 }}</p>
+            {% endif %}
+        </div>
 
-      <div class="form-group">
-        <label>Phone</label>
-        {{ form.phone }}
-      </div>
+        <div>
+            <label class="block font-semibold mb-1">Confirm New Password</label>
+            {{ form.password2|add_class:"w-full border border-gray-300 rounded-lg p-3" }}
+            {% if form.password2.errors %}
+            <p class="text-red-600 font-semibold text-sm mt-1">{{ form.password2.errors.0 }}</p>
+            {% endif %}
+        </div>
 
-      <div class="form-group">
-        <label>Date of Birth</label>
-        {{ form.date_of_birth }}
-      </div>
+        <!-- Name -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+                <label class="block font-semibold mb-1">First Name</label>
+                {{ form.first_name|add_class:"w-full border border-gray-300 rounded-lg p-3" }}
+                {% if form.first_name.errors %}
+                <p class="text-red-600 font-semibold text-sm mt-1">{{ form.first_name.errors.0 }}</p>
+                {% endif %}
+            </div>
+            <div>
+                <label class="block font-semibold mb-1">Last Name</label>
+                {{ form.last_name|add_class:"w-full border border-gray-300 rounded-lg p-3" }}
+                {% if form.last_name.errors %}
+                <p class="text-red-600 font-semibold text-sm mt-1">{{ form.last_name.errors.0 }}</p>
+                {% endif %}
+            </div>
+        </div>
 
-      <div class="form-group">
-        <label>Profile Picture</label>
-        {{ form.profile_picture }}
-      </div>
+        <!-- Email -->
+        <div>
+            <label class="block font-semibold mb-1">Email</label>
+            {{ form.email|add_class:"w-full border border-gray-300 rounded-lg p-3" }}
+            {% if form.email.errors %}
+            <p class="text-red-600 font-semibold text-sm mt-1">{{ form.email.errors.0 }}</p>
+            {% endif %}
+        </div>
 
-      <div class="form-group">
-        <label>User Type</label>
-        {{ form.user_type }}
-      </div>
+        <!-- Phone -->
+        <div>
+            <label class="block font-semibold mb-1">Phone</label>
+            {{ form.phone|add_class:"w-full border border-gray-300 rounded-lg p-3" }}
+            {% if form.phone.errors %}
+            <p class="text-red-600 font-semibold text-sm mt-1">{{ form.phone.errors.0 }}</p>
+            {% endif %}
+        </div>
 
-      <div class="checkbox-group">
-        <label>{{ form.is_active }} Active</label>
-        <label>{{ form.is_staff }} Staff</label>
-      </div>
+        <!-- Birth -->
+        <div>
+            <label class="block font-semibold mb-1">Date of Birth</label>
+            {{ form.date_of_birth|add_class:"w-full border border-gray-300 rounded-lg p-3" }}
+            {% if form.date_of_birth.errors %}
+            <p class="text-red-600 font-semibold text-sm mt-1">{{ form.date_of_birth.errors.0 }}</p>
+            {% endif %}
+        </div>
 
-      <button type="submit" class="save-btn">Save Changes</button>
+        <!-- Profile Picture -->
+        <div>
+            <label class="block font-semibold mb-1">Profile Picture</label>
+            {{ form.profile_picture|add_class:"w-full border border-gray-300 rounded-lg p-3 bg-white" }}
+            {% if form.profile_picture.errors %}
+            <p class="text-red-600 font-semibold text-sm mt-1">{{ form.profile_picture.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <!-- User Type -->
+        <div>
+            <label class="block font-semibold mb-1">User Type</label>
+            {{ form.user_type|add_class:"w-full border border-gray-300 rounded-lg p-3" }}
+            {% if form.user_type.errors %}
+            <p class="text-red-600 font-semibold text-sm mt-1">{{ form.user_type.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <!-- Checkboxes -->
+        <div class="flex gap-6 mt-4">
+            <label class="flex items-center gap-2 font-semibold text-gray-700">
+                {{ form.is_active }} Active
+            </label>
+            <label class="flex items-center gap-2 font-semibold text-gray-700">
+                {{ form.is_staff }} Staff
+            </label>
+        </div>
+
+        <!-- Submit Button -->
+        <button type="submit"
+            class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg transition">
+            Save Changes
+        </button>
 
     </form>
 
-  </div>
 </div>
-
-<style>
-.user-edit-wrapper {
-  max-width: 900px;
-  margin: 60px auto;
-  padding: 0 20px;
-}
-.user-edit-card {
-  background: white;
-  padding: 42px 50px;
-  border-radius: 14px;
-  box-shadow: 0 8px 28px rgba(0,0,0,0.08);
-}
-input, select {
-  width: 100% !important;
-  padding: 12px 14px !important;
-  border: 1px solid #d1d5db !important;
-  border-radius: 8px !important;
-  background: #fafafa !important;
-  font-size: 15px;
-}
-.title {
-  text-align: center;
-  font-size: 28px;
-  font-weight: 700;
-  margin-bottom: 30px;
-  color: #111827;
-}
-.form-group { margin-bottom: 18px; }
-label { font-weight: 600; margin-bottom: 6px; color: #374151; }
-.checkbox-group {
-  display: flex;
-  gap: 25px;
-  margin: 14px 0 24px;
-  font-weight: 600;
-}
-.save-btn {
-  width: 100%;
-  padding: 13px;
-  border-radius: 8px;
-  font-weight: 600;
-  background: #2563eb;
-  color: white;
-  text-align: center;
-}
-.save-btn:hover { background: #1e40af; }
-.error-box {
-  background: #fee2e2;
-  color: #b91c1c;
-  padding: 12px 14px;
-  border-radius: 8px;
-  margin-bottom: 18px;
-  font-weight: 600;
-}
-</style>
 
 {% endblock %}
