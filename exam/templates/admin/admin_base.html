@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extrahead %}
+{{ block.super }}
+{% endblock %}
+
+{% block content %}
+    {% block page_title %}{% endblock %}
+    {% block admin_body %}{% endblock %}
+{% endblock %}
