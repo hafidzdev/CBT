@@ -1,10 +1,8 @@
 <header class="bg-white shadow-sm border-b">
   <div class="flex items-center justify-between p-4">
+
     <!-- Left Section -->
     <div class="flex items-center space-x-4">
-      <h2 class="text-2xl font-bold text-gray-800">{% block page_title %}Dashboard{% endblock %}</h2>
-
-      <!-- Search -->
       <div class="relative">
         <input type="text" placeholder="Search exams..." 
                class="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
@@ -14,6 +12,7 @@
 
     <!-- Right Section -->
     <div class="flex items-center space-x-4">
+
       <!-- Notifications -->
       <div class="relative">
         <button class="p-2 text-gray-600 hover:text-blue-600 relative">
@@ -34,19 +33,26 @@
       <div class="relative">
         <button onclick="toggleUserDropdown()" 
                 class="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition">
-          <div class="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center">
-            <span class="text-white font-bold text-sm">{{ user.username|first|upper }}</span>
-          </div>
-          <span class="font-semibold text-gray-800">{{ user.username }}</span>
+
+          {% if request.user.profile_picture %}
+            <img src="{{ request.user.profile_picture.url }}" class="w-8 h-8 rounded-full object-cover">
+          {% else %}
+            <div class="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center">
+              <span class="text-white font-bold text-sm">{{ request.user.username|first|upper }}</span>
+            </div>
+          {% endif %}
+
+          <span class="font-semibold text-gray-800">{{ request.user.get_full_name|default:request.user.username }}</span>
           <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
         </button>
 
         <!-- Dropdown -->
         <div id="userDropdown" 
              class="hidden absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50 text-sm">
+
           <div class="px-4 py-3 border-b border-gray-200">
-            <p class="font-semibold text-gray-800">{{ user.get_full_name|default:user.username }}</p>
-            <p class="text-gray-500 text-xs">{{ user.email|default:"No email set" }}</p>
+            <p class="font-semibold text-gray-800">{{ request.user.get_full_name|default:request.user.username }}</p>
+            <p class="text-gray-500 text-xs">{{ request.user.email|default:"No email set" }}</p>
           </div>
 
           <div class="py-2">
@@ -61,75 +67,53 @@
               <span>Logout</span>
             </a>
           </div>
+
         </div>
       </div>
+
     </div>
   </div>
 </header>
 
-<!-- MODAL ACCOUNT INFO -->
+<!-- MODAL -->
 <div id="accountModal"
      class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50">
   <div class="bg-gradient-to-br from-blue-900 to-blue-800 text-white rounded-2xl shadow-2xl w-[90%] max-w-md p-6 relative border border-blue-700/40">
-    <button onclick="toggleAccountModal(false)"
-            class="absolute top-3 right-3 text-blue-300 hover:text-white text-lg">
+    <button onclick="toggleAccountModal(false)" class="absolute top-3 right-3 text-blue-300 hover:text-white text-lg">
       <i class="fas fa-times"></i>
     </button>
 
-    <h2 class="text-lg font-semibold mb-4 border-b border-blue-700 pb-2">
-      Account Information
-    </h2>
+    <h2 class="text-lg font-semibold mb-4 border-b border-blue-700 pb-2">Account Information</h2>
 
     <div class="space-y-3 text-sm">
       <div>
         <label class="block text-blue-200 mb-1">Full Name</label>
-        <div class="bg-blue-950 border border-blue-700 rounded-md p-2 text-white">
-          {{ user.get_full_name|default:user.username }}
-        </div>
+        <div class="bg-blue-950 border border-blue-700 rounded-md p-2">{{ request.user.get_full_name|default:request.user.username }}</div>
       </div>
+
       <div>
         <label class="block text-blue-200 mb-1">Email</label>
-        <div class="bg-blue-950 border border-blue-700 rounded-md p-2 text-white">
-          {{ user.email|default:"No email set" }}
-        </div>
+        <div class="bg-blue-950 border border-blue-700 rounded-md p-2">{{ request.user.email|default:"No email set" }}</div>
       </div>
+
       <div>
-        <label class="block text-blue-200 mb-1">Username</label>
-        <div class="bg-blue-950 border border-blue-700 rounded-md p-2 text-white">
-          {{ user.username }}
-        </div>
-      </div>
-      <div>
-        <label class="block text-blue-200 mb-1">Joined On</label>
-        <div class="bg-blue-950 border border-blue-700 rounded-md p-2 text-white">
-          {{ user.date_joined|date:"d F Y, H:i" }}
-        </div>
-      </div>
-      <div>
-        <label class="block text-blue-200 mb-1">Account Role</label>
-        <div class="bg-blue-950 border border-blue-700 rounded-md p-2 text-white">
-          Student
-        </div>
+        <label class="block text-blue-200 mb-1">Role</label>
+        <div class="bg-blue-950 border border-blue-700 rounded-md p-2">{{ request.user.get_user_type_display }}</div>
       </div>
     </div>
 
     <div class="pt-4 text-right">
-      <button onclick="toggleAccountModal(false)" 
-              class="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 px-4 py-1.5 rounded-md text-sm font-semibold">
-        Close
-      </button>
+      <button onclick="toggleAccountModal(false)" class="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 px-4 py-1.5 rounded-md text-sm font-semibold">Close</button>
     </div>
+
   </div>
 </div>
 
-<!-- JS -->
 <script>
 function toggleUserDropdown() {
   document.getElementById('userDropdown').classList.toggle('hidden');
 }
-
 function toggleAccountModal(show) {
-  const modal = document.getElementById('accountModal');
-  modal.classList.toggle('hidden', !show);
+  document.getElementById('accountModal').classList.toggle('hidden', !show);
 }
 </script>
