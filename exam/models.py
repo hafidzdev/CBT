@@ -291,62 +291,100 @@ class ExamSession(models.Model):
         ('timeout', 'Timeout'),
         ('terminated', 'Terminated by Admin'),
     )
-    
-    # Basic Information
+
+    # === Basic Info ===
     session_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
-    exam = models.ForeignKey(Exam, on_delete=models.CASCADE)
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    
-    # Timing
+    exam = models.ForeignKey('Exam', on_delete=models.CASCADE, related_name='sessions')
+    user = models.ForeignKey('CustomUser', on_delete=models.CASCADE, related_name='exam_sessions')
+
+    # === Timing ===
     start_time = models.DateTimeField(auto_now_add=True)
     end_time = models.DateTimeField(blank=True, null=True)
     submitted_at = models.DateTimeField(blank=True, null=True)
     time_spent = models.IntegerField(default=0, help_text="Time spent in seconds")
-    
-    # Results
-    score = models.FloatField(blank=True, null=True, validators=[MinValueValidator(0), MaxValueValidator(100)])
+
+    # === Results ===
+    score = models.FloatField(
+        blank=True, null=True,
+        validators=[MinValueValidator(0), MaxValueValidator(100)]
+    )
     total_questions = models.IntegerField(default=0)
     answered_questions = models.IntegerField(default=0)
     correct_answers = models.IntegerField(default=0)
     wrong_answers = models.IntegerField(default=0)
-    
-    # Status
+
+    # === Status ===
     status = models.CharField(max_length=20, choices=SESSION_STATUS, default='in_progress')
     is_completed = models.BooleanField(default=False)
     attempt_number = models.IntegerField(default=1)
-    
-    # Security
+
+    # === Security ===
     ip_address = models.GenericIPAddressField(blank=True, null=True)
     user_agent = models.TextField(blank=True)
-    
+
     class Meta:
         unique_together = ['exam', 'user', 'attempt_number']
         ordering = ['-start_time']
-    
+
     def __str__(self):
         return f"{self.user.username} - {self.exam.title} (Attempt {self.attempt_number})"
-    
+
+    # === Properties ===
+    @property
+    def completed(self):
+        """True jika end_time sudah lewat, atau is_completed = True"""
+        if self.end_time:
+            return timezone.now() > self.end_time or self.is_completed
+        return self.is_completed
+
+    @property
+    def is_ongoing(self):
+        """True jika waktu sekarang di antara start_time dan end_time"""
+        now = timezone.now()
+        return self.end_time and self.start_time <= now <= self.end_time and not self.is_completed
+
+    @property
+    def is_upcoming(self):
+        """True jika belum dimulai"""
+        return timezone.now() < self.start_time
+
+    @property
+    def time_until_start(self):
+        """Berapa lama lagi sebelum exam dimulai"""
+        if self.is_upcoming:
+            return self.start_time - timezone.now()
+        return None
+
+    @property
+    def time_remaining(self):
+        """Sisa waktu exam (kalau sedang berlangsung)"""
+        if self.is_ongoing and self.end_time:
+            return self.end_time - timezone.now()
+        return None
+
     @property
     def is_passed(self):
-        return self.score >= self.exam.passing_score if self.score else False
-    
+        """True jika skor lebih tinggi dari passing score"""
+        return self.score >= self.exam.passing_score if self.score is not None else False
+
+    # === Methods ===
     def calculate_score(self):
+        """Hitung skor berdasarkan jawaban yang sudah disimpan"""
         if not self.is_completed:
             return None
-        
-        total_points = sum(question.points for question in self.exam.questions.all())
+
+        total_points = sum(q.points for q in self.exam.questions.all())
         earned_points = sum(
-            answer.points_earned for answer in self.user_answers.all() 
-            if answer.points_earned is not None
+            a.points_earned for a in self.user_answers.all()
+            if a.points_earned is not None
         )
-        
+
         if total_points > 0:
             self.score = (earned_points / total_points) * 100
         else:
             self.score = 0
-        self.save()
+        self.save(update_fields=['score'])
         return self.score
-
 class UserAnswer(models.Model):
     session = models.ForeignKey(ExamSession, on_delete=models.CASCADE, related_name='user_answers')
     question = models.ForeignKey(Question, on_delete=models.CASCADE)

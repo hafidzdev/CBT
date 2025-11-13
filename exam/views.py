@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required,user_passes_test
 from django.contrib import messages
 from django.http import JsonResponse
 from django.utils import timezone
-from django.db.models import Count, Avg, Q,F
+from django.db.models import Count, Avg, Q,F,Max
 from datetime import timedelta
 from django.db import models
 from .models import Exam, ExamSession, Question, Choice, UserAnswer, QuestionBank, StudentAnswer
@@ -144,6 +144,7 @@ def student_dashboard(request):
 
     try:
         # ===== Statistik Ujian =====
+        # ✅ GUNAKAN 'sessions' BUKAN 'session'
         total_exams_taken = ExamSession.objects.filter(user=user, is_completed=True).count()
         passed_exams = ExamSession.objects.filter(user=user, is_completed=True, score__gte=F('exam__passing_score')).count()
         avg_result = ExamSession.objects.filter(user=user, is_completed=True, score__isnull=False).aggregate(avg_score=Avg('score'))
@@ -154,6 +155,7 @@ def student_dashboard(request):
         recent_sessions = ExamSession.objects.filter(user=user).select_related('exam', 'exam__subject').order_by('-start_time')[:5]
 
         # ===== Ujian Tersedia =====
+        # ✅ PERBAIKI QUERY INI - GUNAKAN 'sessions' BUKAN 'session'
         available_exams = Exam.objects.filter(
             status='published', is_active=True,
             start_time__lte=now, end_time__gte=now
@@ -162,7 +164,8 @@ def student_dashboard(request):
         ).filter(
             Q(allowed_users__isnull=True) | Q(allowed_users=user)
         ).exclude(
-            examsession__user=user, examsession__is_completed=True
+            # ✅ INI YANG HARUS DIPERBAIKI:
+            sessions__user=user, sessions__is_completed=True  # GUNAKAN 'sessions' bukan 'session'
         ).distinct().select_related('subject')[:6]
 
         # ===== Context untuk template =====
@@ -189,13 +192,16 @@ def student_dashboard(request):
 def my_exams(request):
     """Halaman exams untuk student dengan sistem token"""
     if request.user.user_type != 'student':
-        messages.error(request, "Access denied. Student area only.")
+        messages.error(request, "Akses ditolak. Hanya untuk area student.")
         return redirect('exam:login')
     
     now = timezone.now()
     user = request.user
     
-    # Get available exams
+    # HAPUS BARIS INI jika tidak diperlukan, atau perbaiki nama field
+    # exams = Exam.objects.filter(sessions__is_completed=False)  # Ini yang menyebabkan error
+    
+    # Dapatkan ujian yang tersedia
     available_exams = Exam.objects.filter(
         status='published',
         is_active=True,
@@ -208,24 +214,24 @@ def my_exams(request):
         Q(allowed_users__isnull=True) | 
         Q(allowed_users=user)
     ).exclude(
-        examsession__user=user,
-        examsession__is_completed=True
+        sessions__user=user,  # Gunakan 'sessions' bukan 'examsession'
+        sessions__is_completed=True
     ).distinct().select_related('subject', 'created_by')
     
-    # Get ongoing sessions
+    # Dapatkan sesi yang sedang berlangsung
     ongoing_sessions = ExamSession.objects.filter(
         user=user,
         end_time__isnull=True,
         is_completed=False
     ).select_related('exam')
     
-    # Get completed sessions
+    # Dapatkan sesi yang sudah selesai
     completed_sessions = ExamSession.objects.filter(
         user=user,
         is_completed=True
     ).select_related('exam').order_by('-end_time')
     
-    # Get upcoming exams
+    # Dapatkan ujian yang akan datang
     upcoming_exams = Exam.objects.filter(
         status='published',
         is_active=True,
@@ -238,13 +244,13 @@ def my_exams(request):
         Q(allowed_users=user)
     ).distinct().select_related('subject').order_by('start_time')[:5]
     
-    # Calculate statistics
+    # Hitung statistik
     total_exams = available_exams.count() + ongoing_sessions.count() + completed_sessions.count()
     
-    # Calculate average score
+    # Hitung rata-rata skor
     avg_score = completed_sessions.aggregate(avg_score=Avg('score'))['avg_score'] or 0
     
-    # Calculate success rate
+    # Hitung tingkat keberhasilan
     passed_exams = completed_sessions.filter(score__gte=F('exam__passing_score')).count()
     success_rate = round((passed_exams / completed_sessions.count() * 100), 2) if completed_sessions.count() > 0 else 0
     
@@ -271,7 +277,7 @@ def take_exam(request, exam_id):
     if request.user.user_type != 'student':
         return redirect('exam_access_denied')
     
-    # Check exam availability
+    # Check exam aavailability
     now = timezone.now()
     
     # Exam hasn't started yet
@@ -1312,6 +1318,124 @@ def create_exam(request):
         'form': form
     }
     return render(request, 'exam/create_exam_form.html', context)
+
+@login_required
+def exam_details(request, exam_id):
+    """Detail page untuk exam dengan informasi lengkap"""
+    exam = get_object_or_404(Exam, id=exam_id)
+    now = timezone.now()
+    user = request.user
+    
+    # Basic exam information
+    question_count = exam.questions.count()
+    
+    # Question type breakdown
+    question_types = exam.questions.values('question_type').annotate(count=Count('id'))
+    question_types_dict = {item['question_type']: item['count'] for item in question_types}
+    
+    # Difficulty distribution
+    difficulty_distribution = exam.questions.values('difficulty').annotate(count=Count('id'))
+    difficulty_dict = {item['difficulty']: item['count'] for item in difficulty_distribution}
+    
+    # Time progress calculation
+    total_duration = (exam.end_time - exam.start_time).total_seconds()
+    elapsed_time = (now - exam.start_time).total_seconds()
+    time_progress = min(100, max(0, (elapsed_time / total_duration) * 100)) if total_duration > 0 else 0
+    
+    # User-specific data
+    user_sessions = ExamSession.objects.filter(
+        user=user, 
+        exam=exam
+    ).order_by('-start_time')
+    
+    completed_sessions = user_sessions.filter(is_completed=True)
+    attempts_remaining = max(0, exam.max_attempts - completed_sessions.count())
+    
+    # Calculate user statistics
+    if completed_sessions.exists():
+        best_score = completed_sessions.aggregate(max_score=Max('score'))['max_score'] or 0
+        average_score = completed_sessions.aggregate(avg_score=Avg('score'))['avg_score'] or 0
+    else:
+        best_score = 0
+        average_score = 0
+    
+    # Check exam availability
+    exam_available = (
+        exam.status == 'published' and 
+        exam.is_active and 
+        exam.start_time <= now <= exam.end_time
+    )
+    
+    time_available = (exam.start_time <= now <= exam.end_time)
+    can_start_exam = (
+        exam_available and 
+        attempts_remaining > 0 and 
+        time_available
+    )
+    
+    # Check permissions
+    has_permission = (
+        not exam.allowed_departments.exists() or 
+        exam.allowed_departments.filter(id=user.department.id).exists()
+    ) and (
+        not exam.allowed_users.exists() or 
+        exam.allowed_users.filter(id=user.id).exists()
+    )
+    
+    # Get active token if exists
+    active_token = None
+    if hasattr(exam, 'tokens'):
+        active_token = exam.tokens.filter(
+            status='active',
+            expires_at__gt=now
+        ).first()
+    
+    # Overall exam statistics (for all users)
+    all_sessions = ExamSession.objects.filter(exam=exam)
+    total_attempts = all_sessions.count()
+    completed_attempts = all_sessions.filter(is_completed=True).count()
+    
+    if completed_attempts > 0:
+        overall_average_score = all_sessions.filter(is_completed=True).aggregate(
+            avg_score=Avg('score')
+        )['avg_score'] or 0
+        
+        passed_attempts = all_sessions.filter(
+            is_completed=True, 
+            score__gte=exam.passing_score
+        ).count()
+        
+        pass_rate = round((passed_attempts / completed_attempts) * 100, 2)
+        completion_rate = round((completed_attempts / total_attempts) * 100, 2)
+    else:
+        overall_average_score = 0
+        pass_rate = 0
+        completion_rate = 0
+    
+    context = {
+        'exam': exam,
+        'question_count': question_count,
+        'question_types': question_types_dict,
+        'difficulty_distribution': difficulty_dict,
+        'time_progress': time_progress,
+        'user_sessions': user_sessions,
+        'attempts_remaining': attempts_remaining,
+        'best_score': round(best_score, 2),
+        'average_score': round(average_score, 2),
+        'exam_available': exam_available,
+        'time_available': time_available,
+        'can_start_exam': can_start_exam and has_permission,
+        'has_permission': has_permission,
+        'active_token': active_token,
+        'total_attempts': total_attempts,
+        'overall_average_score': round(overall_average_score, 2),
+        'pass_rate': pass_rate,
+        'completion_rate': completion_rate,
+        'now': now,
+        'title': f'{exam.title} - Details'
+    }
+    
+    return render(request, 'exam/exam_details.html', context)
 
 @never_cache
 @login_required

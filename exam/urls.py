@@ -26,6 +26,8 @@ urlpatterns = [
     path('student/exam/token/<str:token>/', views.access_exam_with_token, name='access_exam_with_token'),
     path('student/results/', views.student_results, name='student_results'),
     path('student/results/<int:session_id>/', views.student_result_detail, name='student_result_detail'),
+    path('exam/<int:exam_id>/details/', views.exam_details, name='exam_details'),
+    path('exam/<int:exam_id>/', views.exam_details, name='exam_details_short'),
      # Error pages
     path('exam/not-available/', views.exam_not_available, name='exam_not_available'),
     path('exam/ended/', views.exam_ended, name='exam_ended'),
