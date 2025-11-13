@@ -1386,32 +1386,41 @@ def exam_token_access(request):
     
     return render(request, 'exam/exam_token.html', context)
 
-# exam/views.py - tambahkan view untuk validasi token
+
 @login_required
 @admin_required
 def token_management(request):
-    """Admin panel untuk mengelola token"""
+    now = timezone.now()
+    expired_count = ExamToken.objects.filter(
+        status='active',
+        expires_at__lte=now  # ✅ HANYA yang waktu expiry <= sekarang
+    ).update(status='expired')
+    
+    print(f"🔄 Auto-expired {expired_count} tokens")  # Debug
+    
+    # Query seperti biasa
     tokens = ExamToken.objects.select_related('exam', 'created_by').all()
     exams = Exam.objects.filter(is_active=True)
     
+    # Hitung stats
+    active_tokens = tokens.filter(status='active').count()
+    expired_tokens = tokens.filter(status='expired').count()
+    global_tokens = tokens.filter(is_global=True).count()
+    
+    # POST logic (existing code tetap)
     if request.method == 'POST':
         action = request.POST.get('action')
         
         if action == 'create_token':
             exam_id = request.POST.get('exam_id')
             duration = int(request.POST.get('duration', 15))
-            is_global = request.POST.get('is_global') == 'true'
+            is_global = request.POST.get('is_global') == 'on'
             max_usage = int(request.POST.get('max_usage', 100))
             
             exam = get_object_or_404(Exam, id=exam_id)
             
-            # Deactivate existing active tokens for this exam
-            ExamToken.objects.filter(
-                exam=exam, 
-                status='active'
-            ).update(status='expired')
+            ExamToken.objects.filter(exam=exam, status='active').update(status='expired')
             
-            # Create new token
             token = ExamToken.create_token(
                 exam=exam,
                 created_by=request.user,
@@ -1441,9 +1450,13 @@ def token_management(request):
     context = {
         'tokens': tokens,
         'exams': exams,
-        'title': 'Token Management'
+        'active_tokens': active_tokens,
+        'expired_tokens': expired_tokens,
+        'global_tokens': global_tokens,
     }
     return render(request, 'admin/token_management.html', context)
+
+
 
 
 @csrf_exempt
