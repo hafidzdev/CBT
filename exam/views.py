@@ -27,6 +27,8 @@ from django.contrib.sessions.models import Session
 import json
 import csv
 import io
+import xlsxwriter
+from io import BytesIO
 
 # GET User Data
 User = get_user_model()
@@ -1412,15 +1414,34 @@ def token_management(request):
         action = request.POST.get('action')
         
         if action == 'create_token':
-            exam_id = request.POST.get('exam_id')
-            duration = int(request.POST.get('duration', 15))
             is_global = request.POST.get('is_global') == 'on'
+            duration = int(request.POST.get('duration', 15))
             max_usage = int(request.POST.get('max_usage', 100))
             
-            exam = get_object_or_404(Exam, id=exam_id)
+            # PERBAIKAN: Jika global, exam_id tidak required
+            if is_global:
+                # Global token - ambil exam pertama sebagai placeholder
+                # atau bisa create exam dummy khusus untuk global token
+                exam = exams.first()  # Ambil exam random sebagai placeholder
+                
+                if not exam:
+                    messages.error(request, 'No exam available in the system')
+                    return redirect('exam:token_management')
+            else:
+                # Normal token - exam_id required
+                exam_id = request.POST.get('exam_id')
+                
+                if not exam_id:
+                    messages.error(request, 'Please select an exam')
+                    return redirect('exam:token_management')
+                
+                exam = get_object_or_404(Exam, id=exam_id)
             
-            ExamToken.objects.filter(exam=exam, status='active').update(status='expired')
+            # Revoke existing active tokens untuk exam yang sama (jika bukan global)
+            if not is_global:
+                ExamToken.objects.filter(exam=exam, status='active').update(status='expired')
             
+            # Create token
             token = ExamToken.create_token(
                 exam=exam,
                 created_by=request.user,
@@ -1429,8 +1450,10 @@ def token_management(request):
                 max_usage=max_usage
             )
             
-            messages.success(request, f'Token {token.token} created successfully!')
+            token_type = "Global token" if is_global else f"Token for {exam.title}"
+            messages.success(request, f'{token_type} {token.token} created successfully!')
             return redirect('exam:token_management')
+
         
         elif action == 'revoke_token':
             token_id = request.POST.get('token_id')
@@ -1457,6 +1480,175 @@ def token_management(request):
     return render(request, 'admin/token_management.html', context)
 
 
+@login_required
+@admin_required
+def refresh_token(request, token_id):
+    """Refresh token yang expired"""
+    if request.method == 'POST':
+        token = get_object_or_404(ExamToken, id=token_id)
+        
+        if token.refresh_token():
+            messages.success(request, f'Token {token.token} successfully refreshed!')
+        else:
+            messages.error(request, 'Only expired tokens can be refreshed.')
+        
+        return redirect('exam:token_management')
+    
+    return redirect('exam:token_management')
+
+
+@login_required
+@admin_required
+def export_tokens(request):
+    """Export tokens ke CSV atau Excel"""
+    export_format = request.GET.get('format', 'csv')
+    
+    tokens = ExamToken.objects.select_related('exam', 'created_by').all()
+    
+    if export_format == 'excel':
+        # Export ke Excel
+        output = BytesIO()
+        workbook = xlsxwriter.Workbook(output)
+        worksheet = workbook.add_worksheet('Tokens')
+        
+        # Header style
+        header_format = workbook.add_format({
+            'bold': True,
+            'bg_color': '#4F46E5',
+            'font_color': 'white',
+            'border': 1
+        })
+        
+        # Headers
+        headers = ['Token', 'Exam', 'Status', 'Created By', 'Created At', 'Expires At', 'Usage', 'Max Usage', 'Global']
+        for col, header in enumerate(headers):
+            worksheet.write(0, col, header, header_format)
+        
+        # Data rows
+        for row, token in enumerate(tokens, start=1):
+            worksheet.write(row, 0, token.token)
+            worksheet.write(row, 1, token.exam.title)
+            worksheet.write(row, 2, token.get_status_display())
+            worksheet.write(row, 3, token.created_by.username)
+            worksheet.write(row, 4, token.created_at.strftime('%Y-%m-%d %H:%M'))
+            worksheet.write(row, 5, token.expires_at.strftime('%Y-%m-%d %H:%M'))
+            worksheet.write(row, 6, token.used_count)
+            worksheet.write(row, 7, token.max_usage)
+            worksheet.write(row, 8, 'Yes' if token.is_global else 'No')
+        
+        # Adjust column widths
+        worksheet.set_column(0, 0, 12)  # Token
+        worksheet.set_column(1, 1, 30)  # Exam
+        worksheet.set_column(2, 2, 12)  # Status
+        worksheet.set_column(3, 3, 15)  # Created By
+        worksheet.set_column(4, 5, 18)  # Dates
+        
+        workbook.close()
+        output.seek(0)
+        
+        response = HttpResponse(
+            output.read(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = f'attachment; filename="exam_tokens_{timezone.now().strftime("%Y%m%d_%H%M%S")}.xlsx"'
+        
+        return response
+    
+    else:
+        # Export ke CSV
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="exam_tokens_{timezone.now().strftime("%Y%m%d_%H%M%S")}.csv"'
+        
+        writer = csv.writer(response)
+        writer.writerow(['Token', 'Exam', 'Status', 'Created By', 'Created At', 'Expires At', 'Usage', 'Max Usage', 'Global'])
+        
+        for token in tokens:
+            writer.writerow([
+                token.token,
+                token.exam.title,
+                token.get_status_display(),
+                token.created_by.username,
+                token.created_at.strftime('%Y-%m-%d %H:%M'),
+                token.expires_at.strftime('%Y-%m-%d %H:%M'),
+                f"{token.used_count}/{token.max_usage}",
+                token.max_usage,
+                'Yes' if token.is_global else 'No'
+            ])
+        
+        return response
+
+@login_required
+@admin_required
+def bulk_generate_tokens(request):
+    """Generate multiple tokens untuk satu exam"""
+    if request.method == 'POST':
+        try:
+            is_global = request.POST.get('is_global') == 'on'
+            quantity = int(request.POST.get('quantity', 1))
+            duration = int(request.POST.get('duration', 15))
+            max_usage = int(request.POST.get('max_usage', 1))
+            
+            # Validasi quantity
+            if quantity < 1 or quantity > 100:
+                messages.error(request, 'Quantity must be between 1 and 100')
+                return redirect('exam:token_management')
+            
+            # ✅ FIX: Handle global token
+            if is_global:
+                # Global token - ambil exam pertama sebagai placeholder
+                exam = Exam.objects.filter(is_active=True).first()
+                
+                if not exam:
+                    messages.error(request, 'No active exam found in the system. Please create an exam first.')
+                    return redirect('exam:token_management')
+            else:
+                # Normal token - exam_id required
+                exam_id = request.POST.get('exam_id')
+                
+                if not exam_id:
+                    messages.error(request, 'Please select an exam')
+                    return redirect('exam:token_management')
+                
+                exam = get_object_or_404(Exam, id=exam_id)
+            
+            # Generate tokens
+            created_tokens = []
+            expires_at = timezone.now() + timedelta(minutes=duration)
+            
+            for _ in range(quantity):
+                token = ExamToken.objects.create(
+                    token=ExamToken.generate_token(),
+                    exam=exam,
+                    created_by=request.user,
+                    expires_at=expires_at,
+                    is_global=is_global,
+                    max_usage=max_usage,
+                    status='active'
+                )
+                created_tokens.append(token.token)
+            
+            # Success message
+            if is_global:
+                messages.success(
+                    request, 
+                    f'Successfully generated {quantity} global tokens! These tokens work for ALL exams.'
+                )
+            else:
+                messages.success(
+                    request, 
+                    f'Successfully generated {quantity} tokens for {exam.title}!'
+                )
+            
+            # Optional: Save ke session untuk ditampilkan
+            request.session['generated_tokens'] = created_tokens
+            
+            return redirect('exam:token_management')
+            
+        except Exception as e:
+            messages.error(request, f'Error generating tokens: {str(e)}')
+            return redirect('exam:token_management')
+    
+    return redirect('exam:token_management')
 
 
 @csrf_exempt
