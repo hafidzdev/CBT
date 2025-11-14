@@ -478,6 +478,12 @@ class StudentAnswer(models.Model):
     def __str__(self):
         return f"{self.session.user} - {self.question.id}"
 
+def get_exam_display(self):
+    """Return exam title or 'All Exams' for global tokens"""
+    if self.is_global:
+        return "All Exams (Global)"
+    return self.exam.title
+
 class ExamToken(models.Model):
     TOKEN_STATUS = [
         ('active', 'Active'),
@@ -542,3 +548,18 @@ class ExamToken(models.Model):
         """Manually revoke token"""
         self.status = 'revoked'
         self.save()
+
+    def refresh_token(self):
+        """Refresh expired token dengan durasi yang sama"""
+        if self.status == 'expired':
+            # Hitung durasi original
+            original_duration = (self.expires_at - self.created_at).total_seconds() / 60
+
+            # Set waktu baru
+            self.expires_at = timezone.now() + timedelta(minutes=int(original_duration))
+            self.status = 'active'
+            self.used_count = 0  # Reset usage count
+            self.save()
+            return True
+
+        return False
