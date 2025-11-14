@@ -1,0 +1,530 @@
+<!-- exam/templates/exam/exam_details.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ exam.title }} - Exam Details - CBT System{% endblock %}
+
+{% block page_title %}Exam Details{% endblock %}
+
+{% block extra_head %}
+<style>
+    .exam-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .info-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+    }
+    .info-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    }
+    .stat-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+    .requirement-item {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+    }
+    .requirement-met {
+        background: #d1fae5;
+        color: #065f46;
+    }
+    .requirement-not-met {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    .question-preview {
+        border-left: 4px solid #4f46e5;
+        background: #f8fafc;
+    }
+    .time-indicator {
+        background: linear-gradient(90deg, #10b981, #3b82f6);
+    }
+    .token-display {
+        background: linear-gradient(135deg, #8b5cf6, #ec4899);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-8">
+    <!-- Exam Header -->
+    <div class="exam-header rounded-2xl shadow-xl p-8 text-white">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
+            <div class="mb-6 md:mb-0">
+                <div class="flex items-center space-x-4 mb-4">
+                    <div class="w-16 h-16 bg-white bg-opacity-20 rounded-2xl flex items-center justify-center">
+                        <i class="fas fa-file-alt text-2xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold mb-2">{{ exam.title }}</h1>
+                        <p class="text-blue-100 text-lg">{{ exam.description }}</p>
+                    </div>
+                </div>
+                
+                <div class="flex flex-wrap gap-4 mt-4">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-book"></i>
+                        <span>{{ exam.subject.name|default:"General Subject" }}</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-user-tie"></i>
+                        <span>Created by: {{ exam.created_by.get_full_name|default:exam.created_by.username }}</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-calendar"></i>
+                        <span>Created: {{ exam.created_at|date:"M d, Y" }}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center bg-white bg-opacity-20 rounded-2xl p-6 backdrop-blur-sm">
+                <div class="text-4xl font-bold mb-2">{{ exam.status|title }}</div>
+                <div class="text-lg">Exam Status</div>
+                {% if exam.is_active %}
+                <span class="inline-block mt-2 bg-green-500 text-white px-3 py-1 rounded-full text-sm">
+                    Active
+                </span>
+                {% else %}
+                <span class="inline-block mt-2 bg-red-500 text-white px-3 py-1 rounded-full text-sm">
+                    Inactive
+                </span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="info-card p-6 text-center">
+            <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-clock text-blue-600 text-xl"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">Duration</h3>
+            <p class="text-2xl font-bold text-blue-600">{{ exam.duration_minutes }} minutes</p>
+        </div>
+        
+        <div class="info-card p-6 text-center">
+            <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-question-circle text-green-600 text-xl"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">Questions</h3>
+            <p class="text-2xl font-bold text-green-600">{{ question_count }}</p>
+        </div>
+        
+        <div class="info-card p-6 text-center">
+            <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-trophy text-purple-600 text-xl"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">Passing Score</h3>
+            <p class="text-2xl font-bold text-purple-600">{{ exam.passing_score }}%</p>
+        </div>
+        
+        <div class="info-card p-6 text-center">
+            <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-redo text-orange-600 text-xl"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">Max Attempts</h3>
+            <p class="text-2xl font-bold text-orange-600">{{ exam.max_attempts }}</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Left Column - Exam Information -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Exam Schedule -->
+            <div class="info-card p-6">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-calendar-alt text-blue-500 mr-3"></i>
+                    Exam Schedule
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-blue-50 rounded-xl p-4">
+                        <div class="flex items-center space-x-3 mb-2">
+                            <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                <i class="fas fa-play text-blue-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Start Time</p>
+                                <p class="font-semibold text-gray-800">{{ exam.start_time|date:"M d, Y H:i" }}</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">
+                            {% if exam.start_time > now %}
+                            Starts in {{ exam.start_time|timeuntil }}
+                            {% else %}
+                            Started {{ exam.start_time|timesince }} ago
+                            {% endif %}
+                        </p>
+                    </div>
+                    
+                    <div class="bg-red-50 rounded-xl p-4">
+                        <div class="flex items-center space-x-3 mb-2">
+                            <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                                <i class="fas fa-stop text-red-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">End Time</p>
+                                <p class="font-semibold text-gray-800">{{ exam.end_time|date:"M d, Y H:i" }}</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">
+                            {% if exam.end_time > now %}
+                            Ends in {{ exam.end_time|timeuntil }}
+                            {% else %}
+                            Ended {{ exam.end_time|timesince }} ago
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Time Progress Bar -->
+                <div class="mt-6">
+                    <div class="flex justify-between text-sm text-gray-600 mb-2">
+                        <span>Exam Progress</span>
+                        <span>
+                            {% if exam.is_ongoing %}
+                            Ongoing
+                            {% elif exam.is_upcoming %}
+                            Upcoming
+                            {% else %}
+                            Completed
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-3">
+                        <div class="time-indicator h-3 rounded-full" style="width: {{ time_progress }}%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Exam Instructions -->
+            <div class="info-card p-6">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-info-circle text-green-500 mr-3"></i>
+                    Exam Instructions & Rules
+                </h2>
+                
+                <div class="space-y-4">
+                    <div class="bg-gray-50 rounded-xl p-4">
+                        <h3 class="font-semibold text-gray-800 mb-2">General Instructions</h3>
+                        <ul class="list-disc list-inside space-y-2 text-gray-600">
+                            <li>You have <strong>{{ exam.duration_minutes }} minutes</strong> to complete this exam</li>
+                            <li>Passing score is <strong>{{ exam.passing_score }}%</strong></li>
+                            <li>Maximum attempts allowed: <strong>{{ exam.max_attempts }}</strong></li>
+                            {% if exam.allow_back_navigation %}
+                            <li>You can navigate back to previous questions</li>
+                            {% else %}
+                            <li>You cannot go back to previous questions</li>
+                            {% endif %}
+                            {% if exam.shuffle_questions %}
+                            <li>Questions will be shuffled randomly</li>
+                            {% endif %}
+                            {% if exam.shuffle_choices %}
+                            <li>Answer choices will be shuffled randomly</li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                    
+                    <div class="bg-yellow-50 rounded-xl p-4">
+                        <h3 class="font-semibold text-yellow-800 mb-2">Important Notes</h3>
+                        <ul class="list-disc list-inside space-y-2 text-yellow-700">
+                            <li>Do not refresh the page during the exam</li>
+                            <li>Ensure stable internet connection</li>
+                            <li>Complete the exam before the time expires</li>
+                            {% if exam.require_webcam %}
+                            <li>Webcam monitoring is required for this exam</li>
+                            {% endif %}
+                            {% if exam.require_microphone %}
+                            <li>Microphone access is required for this exam</li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Question Types Breakdown -->
+            <div class="info-card p-6">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-chart-bar text-purple-500 mr-3"></i>
+                    Question Types
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {% for type, count in question_types.items %}
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <span class="font-medium text-gray-700">{{ type|title }}</span>
+                        <span class="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-semibold">
+                            {{ count }} questions
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <!-- Difficulty Distribution -->
+                <div class="mt-6">
+                    <h3 class="font-semibold text-gray-800 mb-3">Difficulty Distribution</h3>
+                    <div class="space-y-3">
+                        {% for difficulty, count in difficulty_distribution.items %}
+                        <div>
+                            <div class="flex justify-between text-sm text-gray-600 mb-1">
+                                <span>{{ difficulty|title }}</span>
+                                <span>{{ count }} questions</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="bg-{{ difficulty|default:'gray' }}-500 h-2 rounded-full" 
+                                     style="width: {{ count|divisibleby:question_count|yesno:count|default:0 }}%"></div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column - Actions & Requirements -->
+        <div class="space-y-6">
+            <!-- Exam Actions -->
+            <div class="info-card p-6">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-play-circle text-green-500 mr-3"></i>
+                    Start Exam
+                </h2>
+                
+                <div class="space-y-4">
+                    <!-- Requirements Check -->
+                    <div class="space-y-3">
+                        <h3 class="font-semibold text-gray-700">Requirements</h3>
+                        
+                        <div class="requirement-item {% if exam_available %}requirement-met{% else %}requirement-not-met{% endif %}">
+                            <i class="fas {% if exam_available %}fa-check-circle{% else %}fa-times-circle{% endif %} mr-3"></i>
+                            <span>Exam is available</span>
+                        </div>
+                        
+                        <div class="requirement-item {% if attempts_remaining %}requirement-met{% else %}requirement-not-met{% endif %}">
+                            <i class="fas {% if attempts_remaining %}fa-check-circle{% else %}fa-times-circle{% endif %} mr-3"></i>
+                            <span>Attempts remaining: {{ attempts_remaining }}</span>
+                        </div>
+                        
+                        <div class="requirement-item {% if time_available %}requirement-met{% else %}requirement-not-met{% endif %}">
+                            <i class="fas {% if time_available %}fa-check-circle{% else %}fa-times-circle{% endif %} mr-3"></i>
+                            <span>Within exam time window</span>
+                        </div>
+                        
+                        {% if exam.access_token %}
+                        <div class="requirement-item requirement-met">
+                            <i class="fas fa-key mr-3"></i>
+                            <span>Token access required</span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Start Exam Button -->
+                    {% if can_start_exam %}
+                    <button onclick="startExam({{ exam.id }})" 
+                            class="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition duration-200 font-semibold flex items-center justify-center space-x-2">
+                        <i class="fas fa-play"></i>
+                        <span>Start Exam Now</span>
+                    </button>
+                    {% else %}
+                    <button disabled 
+                            class="w-full bg-gray-400 text-white py-3 rounded-lg font-semibold flex items-center justify-center space-x-2 cursor-not-allowed">
+                        <i class="fas fa-lock"></i>
+                        <span>Exam Not Available</span>
+                    </button>
+                    {% endif %}
+
+                    <!-- Token Display (if available) -->
+                    {% if active_token %}
+                    <div class="token-display rounded-xl p-4 text-white text-center">
+                        <p class="text-sm mb-2">Active Access Token</p>
+                        <code class="text-2xl font-bold tracking-wider">{{ active_token.token }}</code>
+                        <p class="text-xs mt-2 opacity-90">Expires: {{ active_token.expires_at|date:"M d, H:i" }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Your Attempts -->
+            <div class="info-card p-6">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-history text-blue-500 mr-3"></i>
+                    Your Attempts
+                </h2>
+                
+                {% if user_sessions %}
+                <div class="space-y-3">
+                    {% for session in user_sessions %}
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                            <p class="font-semibold text-gray-800">
+                                Attempt {{ session.attempt_number }}
+                            </p>
+                            <p class="text-sm text-gray-600">
+                                {{ session.start_time|date:"M d, H:i" }}
+                            </p>
+                        </div>
+                        <div class="text-right">
+                            {% if session.score is not None %}
+                            <span class="stat-badge {% if session.is_passed %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
+                                {{ session.score }}%
+                            </span>
+                            <p class="text-xs text-gray-500 mt-1">
+                                {{ session.is_passed|yesno:"Passed,Failed" }}
+                            </p>
+                            {% else %}
+                            <span class="stat-badge bg-yellow-100 text-yellow-800">
+                                In Progress
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-gray-500">
+                    <i class="fas fa-inbox text-3xl mb-2"></i>
+                    <p>No attempts yet</p>
+                </div>
+                {% endif %}
+                
+                <div class="mt-4 pt-4 border-t border-gray-200">
+                    <div class="flex justify-between text-sm text-gray-600">
+                        <span>Best Score</span>
+                        <span class="font-semibold">{{ best_score }}%</span>
+                    </div>
+                    <div class="flex justify-between text-sm text-gray-600 mt-1">
+                        <span>Average Score</span>
+                        <span class="font-semibold">{{ average_score }}%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="info-card p-6">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-chart-pie text-purple-500 mr-3"></i>
+                    Exam Statistics
+                </h2>
+                
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Total Attempts</span>
+                        <span class="font-semibold">{{ total_attempts }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Average Score</span>
+                        <span class="font-semibold">{{ overall_average_score }}%</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Pass Rate</span>
+                        <span class="font-semibold">{{ pass_rate }}%</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Completion Rate</span>
+                        <span class="font-semibold">{{ completion_rate }}%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Support Information -->
+            <div class="info-card p-6 bg-blue-50 border border-blue-200">
+                <h2 class="text-xl font-bold text-blue-800 mb-4 flex items-center">
+                    <i class="fas fa-life-ring text-blue-500 mr-3"></i>
+                    Need Help?
+                </h2>
+                
+                <div class="space-y-3 text-blue-700">
+                    <p class="text-sm">If you encounter any issues during the exam:</p>
+                    
+                    <div class="flex items-center space-x-3">
+                        <i class="fas fa-envelope"></i>
+                        <span class="text-sm">Email: support@cbt.edu</span>
+                    </div>
+                    
+                    <div class="flex items-center space-x-3">
+                        <i class="fas fa-phone"></i>
+                        <span class="text-sm">Phone: (021) 1234-5678</span>
+                    </div>
+                    
+                    <div class="flex items-center space-x-3">
+                        <i class="fas fa-clock"></i>
+                        <span class="text-sm">Support Hours: 08:00 - 17:00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Modal -->
+<div id="loadingModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-2xl p-8 text-center max-w-sm w-full">
+        <div class="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">Preparing Exam</h3>
+        <p class="text-gray-600">Loading questions and setting up your exam session...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function startExam(examId) {
+        // Show loading modal
+        document.getElementById('loadingModal').classList.remove('hidden');
+        
+        // Redirect to take exam page
+        setTimeout(() => {
+            window.location.href = `{% url 'take_exam' 0 %}`.replace('0', examId);
+        }, 2000);
+    }
+
+    function showTokenModal() {
+        // Implement token modal if needed
+        alert('Please use the token access system to start this exam.');
+    }
+
+    // Auto-refresh page when exam becomes available
+    {% if exam.is_upcoming %}
+    function checkExamStart() {
+        const now = new Date().getTime();
+        const startTime = new Date('{{ exam.start_time|date:"c" }}').getTime();
+        
+        if (now >= startTime) {
+            window.location.reload();
+        }
+    }
+    
+    // Check every 30 seconds if exam should start
+    setInterval(checkExamStart, 30000);
+    {% endif %}
+
+    // Update countdown timers
+    function updateTimers() {
+        const now = new Date();
+        
+        // Update current time display
+        document.getElementById('currentTime').textContent = now.toLocaleString();
+        
+        // You can add more timer updates here if needed
+    }
+    
+    // Update timers every second
+    setInterval(updateTimers, 1000);
+    
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        updateTimers();
+    });
+</script>
+{% endblock %}

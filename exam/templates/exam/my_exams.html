@@ -1,10 +1,10 @@
-<!-- exam/templates/exam/my_exams.html -->
+<!-- exam/templates/exam/exam_access.html -->
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}My Exams - CBT System{% endblock %}
+{% block title %}Exam Access - CBT System{% endblock %}
 
-{% block page_title %}My Exams{% endblock %}
+{% block page_title %}Exam Access Portal{% endblock %}
 
 {% block extra_head %}
 <style>
@@ -16,33 +16,28 @@
         transform: translateY(-5px);
         box-shadow: 0 10px 25px rgba(0,0,0,0.1);
     }
-    .status-badge {
-        font-size: 0.75rem;
-        padding: 0.25rem 0.75rem;
-        border-radius: 9999px;
+    .token-display {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .token-refresh {
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+    .time-remaining {
+        font-family: 'Courier New', monospace;
+        font-weight: bold;
     }
     .token-input {
         letter-spacing: 0.2em;
         font-weight: bold;
         font-family: 'Courier New', monospace;
     }
-    .progress-ring {
-        transform: rotate(-90deg);
-    }
-    .progress-ring-circle {
-        transition: stroke-dashoffset 0.3s ease;
-    }
     .countdown-timer {
         background: linear-gradient(45deg, #667eea, #764ba2);
-    }
-    .feature-card {
-        transition: all 0.3s ease;
-    }
-    .feature-card:hover {
-        transform: scale(1.05);
-    }
-    .gradient-bg {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     }
 </style>
 {% endblock %}
@@ -50,466 +45,272 @@
 {% block content %}
 <div class="max-w-7xl mx-auto space-y-8">
     <!-- Header Section -->
-    <div class="gradient-bg rounded-2xl shadow-xl p-8 text-white">
+    <div class="token-display rounded-2xl shadow-xl p-8 text-white">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
             <div class="mb-6 md:mb-0">
-                <h1 class="text-3xl font-bold mb-2">Exam Management</h1>
-                <p class="text-blue-100 text-lg">Manage your exams and access assessments</p>
+                <h1 class="text-3xl font-bold mb-2">Exam Access Portal</h1>
+                <p class="text-blue-100 text-lg">Access your exams using tokens provided by administrator</p>
                 <div class="flex items-center mt-4 space-x-4">
                     <div class="flex items-center">
-                        <i class="fas fa-graduation-cap mr-2"></i>
-                        <span>{{ user.department.name|default:"General" }}</span>
+                        <i class="fas fa-user-graduate mr-2"></i>
+                        <span>{{ user.get_full_name|default:user.username }}</span>
                     </div>
                     <div class="flex items-center">
-                        <i class="fas fa-calendar-alt mr-2"></i>
-                        <span>{{ current_date|date:"F d, Y" }}</span>
+                        <i class="fas fa-clock mr-2"></i>
+                        <span id="current-time">{{ current_time|date:"F d, Y H:i:s" }}</span>
                     </div>
                 </div>
             </div>
             <div class="text-center bg-white bg-opacity-20 rounded-2xl p-6 backdrop-blur-sm">
-                <div class="text-4xl font-bold mb-2">{{ total_exams }}</div>
-                <div class="text-lg">Total Exams</div>
+                <div class="text-4xl font-bold mb-2" id="active-tokens-count">{{ active_tokens.count }}</div>
+                <div class="text-lg">Active Tokens</div>
             </div>
         </div>
     </div>
 
-    <!-- Quick Access Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <!-- Token Access -->
-        <div class="feature-card bg-white rounded-2xl shadow-lg p-6 text-center hover:shadow-xl">
-            <div class="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="fas fa-key text-white text-2xl"></i>
-            </div>
-            <h3 class="text-lg font-bold text-gray-800 mb-2">Token Access</h3>
-            <p class="text-gray-600 text-sm mb-4">Enter exam token to start assessment</p>
-            <button onclick="showTokenModal()" 
-                    class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition duration-200 font-semibold">
-                Enter Token
-            </button>
+    <!-- Token Access Section -->
+    <div class="bg-white rounded-2xl shadow-lg p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+                <i class="fas fa-key text-purple-500 mr-3"></i>
+                Available Exam Tokens
+            </h2>
+            <span class="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-semibold">
+                {{ active_tokens.count }} Active
+            </span>
         </div>
 
-        <!-- Available Exams -->
-        <div class="feature-card bg-white rounded-2xl shadow-lg p-6 text-center hover:shadow-xl">
-            <div class="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="fas fa-play-circle text-white text-2xl"></i>
-            </div>
-            <h3 class="text-lg font-bold text-gray-800 mb-2">Available Exams</h3>
-            <p class="text-2xl font-bold text-green-600 mb-2">{{ available_exams.count }}</p>
-            <p class="text-gray-600 text-sm">Ready to start</p>
-        </div>
-
-        <!-- Ongoing Exams -->
-        <div class="feature-card bg-white rounded-2xl shadow-lg p-6 text-center hover:shadow-xl">
-            <div class="w-16 h-16 bg-yellow-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="fas fa-spinner text-white text-2xl"></i>
-            </div>
-            <h3 class="text-lg font-bold text-gray-800 mb-2">Ongoing Exams</h3>
-            <p class="text-2xl font-bold text-yellow-600 mb-2">{{ ongoing_sessions.count }}</p>
-            <p class="text-gray-600 text-sm">In progress</p>
-        </div>
-
-        <!-- Completed Exams -->
-        <div class="feature-card bg-white rounded-2xl shadow-lg p-6 text-center hover:shadow-xl">
-            <div class="w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="fas fa-check-circle text-white text-2xl"></i>
-            </div>
-            <h3 class="text-lg font-bold text-gray-800 mb-2">Completed</h3>
-            <p class="text-2xl font-bold text-purple-600 mb-2">{{ completed_sessions.count }}</p>
-            <p class="text-gray-600 text-sm">Exams finished</p>
-        </div>
-    </div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <!-- Left Column - Available Exams -->
-        <div class="lg:col-span-2 space-y-6">
-            <!-- Available Exams Section -->
-            <div class="bg-white rounded-2xl shadow-lg p-6">
-                <div class="flex items-center justify-between mb-6">
-                    <h3 class="text-xl font-bold text-gray-800 flex items-center">
-                        <i class="fas fa-bolt text-green-500 mr-3"></i>
-                        Available Exams
-                    </h3>
-                    <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold">
-                        {{ available_exams.count }} Available
+        {% if active_tokens %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for token in active_tokens %}
+            <div class="exam-card bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 rounded-xl p-6 hover:shadow-lg">
+                <!-- Token Header -->
+                <div class="flex justify-between items-start mb-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-key text-white"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-gray-800 text-lg">{{ token.exam.title }}</h3>
+                            <p class="text-sm text-gray-600">{{ token.exam.subject.name|default:"General" }}</p>
+                        </div>
+                    </div>
+                    <span class="bg-green-500 text-white px-3 py-1 rounded-full text-sm font-semibold token-refresh">
+                        Active
                     </span>
                 </div>
 
-                {% if available_exams %}
-                <div class="space-y-4">
-                    {% for exam in available_exams %}
-                    <div class="exam-card bg-green-50 border border-green-200 rounded-xl p-5 hover:bg-green-100">
-                        <div class="flex items-start justify-between mb-4">
-                            <div class="flex items-start space-x-4">
-                                <div class="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                                    <i class="fas fa-file-alt text-white"></i>
-                                </div>
-                                <div class="flex-1">
-                                    <h4 class="font-bold text-gray-800 text-lg mb-1">{{ exam.title }}</h4>
-                                    <p class="text-gray-600 text-sm mb-2">{{ exam.description|truncatewords:20 }}</p>
-
-
-
-                                    <div class="flex items-center space-x-4 text-xs text-gray-500">
-                                        <span class="flex items-center">
-                                            <i class="fas fa-book mr-1"></i>
-                                            {{ exam.subject.name|default:"General" }}
-                                        </span>
-                                        <span class="flex items-center">
-                                            <i class="fas fa-user-tie mr-1"></i>
-                                            {{ exam.created_by.get_full_name|default:exam.created_by.username }}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                            <span class="status-badge bg-green-500 text-white">
-                                Available
-                            </span>
+                <!-- Token Display -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Access Token</label>
+                    <div class="flex items-center space-x-2">
+                        <div class="flex-1 bg-white border border-purple-300 rounded-lg p-3">
+                            <code class="text-2xl font-bold text-purple-600 tracking-wider">{{ token.token }}</code>
                         </div>
-
-                        <!-- Exam Token Display -->
-                     
-                                    <!-- ✅ Tampilkan Token jika ada -->
-                                    {% if exam.access_token %}
-                                    <div class="flex items-center bg-purple-50 border border-purple-200 rounded-lg p-2 mb-4">
-                                        <span class="font-mono text-purple-700 font-semibold flex-1">
-                                            {{ exam.access_token }}
-                                        </span>
-                                        <button class="text-white bg-purple-600 px-3 py-1 rounded hover:bg-purple-700 text-sm"
-                                                onclick="navigator.clipboard.writeText('{{ exam.access_token }}')">
-                                            Copy
-                                        </button>
-                                    </div>
-                                    {% endif %}
-                        
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-sm">
-                            <div class="text-center">
-                                <p class="text-gray-600">Duration</p>
-                                <p class="font-semibold text-gray-800">{{ exam.duration_minutes }} min</p>
-                            </div>
-                            <div class="text-center">
-                                <p class="text-gray-600">Questions</p>
-                                <p class="font-semibold text-gray-800">{{ exam.questions.count }}</p>
-                            </div>
-                            <div class="text-center">
-                                <p class="text-gray-600">Passing Score</p>
-                                <p class="font-semibold text-green-600">{{ exam.passing_score }}%</p>
-                            </div>
-                            <div class="text-center">
-                                <p class="text-gray-600">Time Left</p>
-                                <p class="font-semibold text-orange-600">{{ exam.end_time|timeuntil }}</p>
-                            </div>
-                        </div>
-
-                        <div class="flex space-x-3">
-                            <button onclick="startExam({{ exam.id }})" 
-                                    class="flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition duration-200 font-semibold flex items-center justify-center space-x-2">
-                                <i class="fas fa-play"></i>
-                                <span>Start Exam</span>
-                            </button>
-                            <button onclick="showExamDetails({{ exam.id }})" 
-                                    class="bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition duration-200">
-                                <i class="fas fa-info"></i>
-                            </button>
-                            <button onclick="showTokenInput({{ exam.id }}, '{{ exam.title }}')" 
-                                    class="bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 transition duration-200">
-                                <i class="fas fa-key"></i>
-                            </button>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <div class="text-center py-8">
-                    <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <i class="fas fa-clipboard-check text-gray-400 text-xl"></i>
-                    </div>
-                    <h4 class="text-lg font-semibold text-gray-600 mb-2">No Available Exams</h4>
-                    <p class="text-gray-500">There are no exams available for you at the moment.</p>
-                </div>
-                {% endif %}
-            </div>
-
-            <!-- Ongoing Exams Section -->
-            {% if ongoing_sessions %}
-            <div class="bg-white rounded-2xl shadow-lg p-6">
-                <div class="flex items-center justify-between mb-6">
-                    <h3 class="text-xl font-bold text-gray-800 flex items-center">
-                        <i class="fas fa-spinner text-yellow-500 mr-3"></i>
-                        Continue Exams
-                    </h3>
-                    <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-semibold">
-                        {{ ongoing_sessions.count }} In Progress
-                    </span>
-                </div>
-
-                <div class="space-y-4">
-                    {% for session in ongoing_sessions %}
-                    <div class="exam-card bg-yellow-50 border border-yellow-200 rounded-xl p-5 hover:bg-yellow-100">
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="flex items-center space-x-4">
-                                <div class="w-12 h-12 bg-yellow-500 rounded-lg flex items-center justify-center">
-                                    <i class="fas fa-play-circle text-white"></i>
-                                </div>
-                                <div>
-                                    <h4 class="font-bold text-gray-800">{{ session.exam.title }}</h4>
-                                    <p class="text-sm text-gray-600">Started {{ session.start_time|timesince }} ago</p>
-                                </div>
-                            </div>
-                            <span class="status-badge bg-yellow-500 text-white">
-                                In Progress
-                            </span>
-                        </div>
-                        
-                        <div class="flex justify-between items-center mb-4">
-                            <div class="text-sm text-gray-600">
-                                <p>Time Elapsed: <span class="font-semibold">{{ session.start_time|timesince }}</span></p>
-                                <p>Duration: <span class="font-semibold">{{ session.exam.duration_minutes }} minutes</span></p>
-                            </div>
-                            <div class="text-right">
-                                <p class="text-sm text-gray-600">Questions Answered</p>
-                                <p class="font-semibold text-yellow-600">{{ session.answered_questions }}/{{ session.total_questions }}</p>
-                            </div>
-                        </div>
-
-                        <a href="{% url 'exam:take_exam' session.exam.id %}" 
-                           class="w-full bg-yellow-500 text-white text-center py-3 rounded-lg hover:bg-yellow-600 transition duration-200 font-semibold block">
-                            Continue Exam
-                        </a>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
-        </div>
-
-        <!-- Right Column - Additional Features -->
-        <div class="space-y-6">
-            <!-- Token Access Panel -->
-            <div class="bg-white rounded-2xl shadow-lg p-6">
-                <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                    <i class="fas fa-key text-purple-500 mr-3"></i>
-                    Quick Token Access
-                </h3>
-                
-                <div class="space-y-4">
-                    <div>
-                        <label for="quickToken" class="block text-sm font-medium text-gray-700 mb-2">
-                            Enter Exam Token
-                        </label>
-                        <input 
-                            type="text" 
-                            id="quickToken"
-                            placeholder="XXXX-XXXX-XXXX"
-                            class="token-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition duration-200"
-                            maxlength="14"
-                        >
-                    </div>
-                    
-                    <button onclick="validateQuickToken()" 
-                            class="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 transition duration-200 font-semibold">
-                        Validate & Start
-                    </button>
-                    
-                    <div class="text-center">
-                        <p class="text-sm text-gray-600">Get token from your instructor</p>
+                        <button onclick="copyToClipboard('{{ token.token }}')" 
+                                class="bg-purple-600 text-white p-3 rounded-lg hover:bg-purple-700 transition duration-200">
+                            <i class="fas fa-copy"></i>
+                        </button>
                     </div>
                 </div>
-            </div>
 
-            <!-- Upcoming Exams -->
-            {% if upcoming_exams %}
-            <div class="bg-white rounded-2xl shadow-lg p-6">
-                <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                    <i class="fas fa-calendar-alt text-blue-500 mr-3"></i>
-                    Upcoming Exams
-                </h3>
+                <!-- Exam Information -->
+                <div class="grid grid-cols-2 gap-3 mb-4 text-sm">
+                    <div class="text-center bg-white rounded-lg p-2">
+                        <p class="text-gray-600">Duration</p>
+                        <p class="font-semibold text-gray-800">{{ token.exam.duration_minutes }} min</p>
+                    </div>
+                    <div class="text-center bg-white rounded-lg p-2">
+                        <p class="text-gray-600">Questions</p>
+                        <p class="font-semibold text-gray-800">{{ token.exam.questions.count }}</p>
+                    </div>
+                    <div class="text-center bg-white rounded-lg p-2">
+                        <p class="text-gray-600">Passing Score</p>
+                        <p class="font-semibold text-green-600">{{ token.exam.passing_score }}%</p>
+                    </div>
+                    <div class="text-center bg-white rounded-lg p-2">
+                        <p class="text-gray-600">Used</p>
+                        <p class="font-semibold text-blue-600">{{ token.used_count }}/{{ token.max_usage }}</p>
+                    </div>
+                </div>
 
-                <div class="space-y-3">
-                    {% for exam in upcoming_exams %}
-                    <div class="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                        <div class="flex-1">
-                            <p class="font-semibold text-gray-800 text-sm">{{ exam.title }}</p>
-                            <p class="text-xs text-gray-600">{{ exam.start_time|date:"M d, H:i" }}</p>
-                        </div>
-                        <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-semibold">
-                            Soon
+                <!-- Countdown Timer -->
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-yellow-700">Token expires in:</span>
+                        <span id="countdown-{{ token.id }}" class="time-remaining text-yellow-800 font-bold">
+                            {{ token.time_remaining }}
                         </span>
                     </div>
-                    {% endfor %}
+                    <div class="w-full bg-yellow-200 rounded-full h-2 mt-2">
+                        <div id="progress-{{ token.id }}" class="bg-yellow-500 h-2 rounded-full" 
+                             style="width: {{ token.percentage_remaining }}%"></div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex space-x-2">
+                    <button onclick="startExamWithToken('{{ token.token }}')" 
+                            class="flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition duration-200 font-semibold flex items-center justify-center space-x-2">
+                        <i class="fas fa-play"></i>
+                        <span>Start Exam</span>
+                    </button>
+                    <button onclick="showExamDetails({{ token.exam.id }})" 
+                            class="bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition duration-200">
+                        <i class="fas fa-info"></i>
+                    </button>
                 </div>
             </div>
-            {% endif %}
-
-            <!-- Exam Statistics -->
-            <div class="bg-white rounded-2xl shadow-lg p-6">
-                <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                    <i class="fas fa-chart-bar text-green-500 mr-3"></i>
-                    Your Performance
-                </h3>
-
-                <div class="space-y-4">
-                    <div class="flex justify-between items-center">
-                        <span class="text-gray-600">Exams Taken</span>
-                        <span class="font-semibold text-gray-800">{{ completed_sessions.count }}</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-gray-600">Average Score</span>
-                        <span class="font-semibold text-green-600">{{ average_score|default:"0" }}%</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-gray-600">Success Rate</span>
-                        <span class="font-semibold text-blue-600">{{ success_rate|default:"0" }}%</span>
-                    </div>
-                </div>
-
-                <div class="mt-4 pt-4 border-t border-gray-200">
-                    <a href="#" class="w-full bg-gray-100 text-gray-700 text-center py-2 rounded-lg hover:bg-gray-200 transition duration-200 font-semibold block">
-                        View Detailed Report
-                    </a>
-                </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-12">
+            <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i class="fas fa-key text-gray-400 text-3xl"></i>
             </div>
-
-            <!-- Support Card -->
-            <div class="bg-orange-50 border border-orange-200 rounded-2xl p-5">
-                <div class="flex items-start space-x-3">
-                    <div class="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <i class="fas fa-headset text-orange-600"></i>
-                    </div>
+            <h3 class="text-2xl font-semibold text-gray-600 mb-4">No Active Tokens Available</h3>
+            <p class="text-gray-500 max-w-md mx-auto mb-6">
+                There are no active exam tokens available at the moment. 
+                Please check back later or contact your instructor for access tokens.
+            </p>
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md mx-auto">
+                <div class="flex items-center text-blue-800">
+                    <i class="fas fa-info-circle mr-3 text-xl"></i>
                     <div>
-                        <h4 class="font-bold text-orange-800 mb-2">Need Help?</h4>
-                        <p class="text-orange-700 text-sm mb-3">
-                            Contact support if you encounter any issues.
-                        </p>
-                        <div class="space-y-1 text-xs text-orange-600">
-                            <p class="flex items-center">
-                                <i class="fas fa-phone mr-2"></i>
-                                (021) 1234-5678
-                            </p>
-                            <p class="flex items-center">
-                                <i class="fas fa-envelope mr-2"></i>
-                                support@cbt.edu
-                            </p>
-                        </div>
+                        <p class="font-semibold">How to get access?</p>
+                        <p class="text-sm">Contact your instructor or system administrator to generate exam tokens for you.</p>
                     </div>
                 </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Manual Token Input Section -->
+    <div class="bg-white rounded-2xl shadow-lg p-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+            <i class="fas fa-keyboard text-blue-500 mr-3"></i>
+            Manual Token Entry
+        </h2>
+        
+        <div class="max-w-md mx-auto">
+            <div class="space-y-4">
+                <div>
+                    <label for="manualToken" class="block text-sm font-medium text-gray-700 mb-2">
+                        Enter Exam Token
+                    </label>
+                    <input 
+                        type="text" 
+                        id="manualToken"
+                        placeholder="Enter 6-character token"
+                        class="token-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center text-xl"
+                        maxlength="6"
+                        oninput="formatTokenInput(this)"
+                    >
+                    <p class="text-xs text-gray-500 mt-2 text-center">
+                        Enter the 6-character token provided by your instructor
+                    </p>
+                </div>
+                
+                <button onclick="validateManualToken()" 
+                        class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition duration-200 font-semibold flex items-center justify-center space-x-2">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Validate & Start Exam</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Token Information Section -->
+    <div class="bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl shadow-lg p-6 text-white">
+        <div class="flex items-center justify-between">
+            <div>
+                <h2 class="text-2xl font-bold mb-2">About Exam Tokens</h2>
+                <p class="text-blue-100">Secure access system for your examinations</p>
+            </div>
+            <div class="text-right">
+                <div class="bg-white bg-opacity-20 rounded-lg p-4">
+                    <p class="text-sm">System Status</p>
+                    <p class="text-2xl font-bold">Secure</p>
+                    <p class="text-xs">Token-based access</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+            <div class="text-center">
+                <div class="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <h3 class="font-semibold mb-1">Secure Access</h3>
+                <p class="text-blue-100 text-sm">Tokens provide secure, time-limited exam access</p>
+            </div>
+            <div class="text-center">
+                <div class="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <h3 class="font-semibold mb-1">Auto-Expiry</h3>
+                <p class="text-blue-100 text-sm">Tokens automatically expire after designated time</p>
+            </div>
+            <div class="text-center">
+                <div class="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <i class="fas fa-sync"></i>
+                </div>
+                <h3 class="font-semibold mb-1">Auto-Refresh</h3>
+                <p class="text-blue-100 text-sm">Page automatically updates when new tokens are available</p>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Token Modal -->
-<div id="tokenModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
-    <div class="bg-white rounded-2xl p-6 max-w-md w-full">
-        <div class="text-center mb-6">
-            <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="fas fa-key text-blue-500 text-2xl"></i>
-            </div>
-            <h3 class="text-xl font-bold text-gray-800 mb-2">Enter Exam Token</h3>
-            <p class="text-gray-600" id="modalExamTitle">Please enter your exam token to continue</p>
-        </div>
-
-        <div class="space-y-4">
-            <div>
-                <label for="modalToken" class="block text-sm font-medium text-gray-700 mb-2">
-                    Exam Token
-                </label>
-                <input 
-                    type="text" 
-                    id="modalToken"
-                    placeholder="XXXX-XXXX-XXXX"
-                    class="token-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center text-lg"
-                    maxlength="14"
-                >
-            </div>
-
-            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <div class="flex items-center text-blue-800">
-                    <i class="fas fa-info-circle mr-2"></i>
-                    <span class="text-sm">Get your token from your instructor</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="flex space-x-3 mt-6">
-            <button onclick="closeTokenModal()" class="flex-1 bg-gray-500 text-white py-3 rounded-lg hover:bg-gray-600 transition duration-200 font-semibold">
-                Cancel
-            </button>
-            <button onclick="validateToken()" class="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition duration-200 font-semibold">
-                Validate Token
-            </button>
-        </div>
+<!-- Loading Spinner -->
+<div id="loadingSpinner" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-2xl p-8 text-center">
+        <div class="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p class="text-gray-700 font-semibold">Validating token...</p>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-function showCopiedMessage() {
-    const msg = document.createElement('div');
-    msg.textContent = "Token Copied ✅";
-    msg.className = "fixed top-6 right-6 bg-purple-600 text-white px-4 py-2 rounded-lg shadow-lg animate-bounce";
-    document.body.appendChild(msg);
-    setTimeout(() => msg.remove(), 1800);
-}
-</script>
-
- <script>
-    let currentExamId = null;
-
-    function showTokenModal(examId = null, examTitle = '') {
-        currentExamId = examId;
-        const modal = document.getElementById('tokenModal');
-        const title = document.getElementById('modalExamTitle');
-        
-        title.textContent = examTitle
-            ? `Enter token for: ${examTitle}`
-            : 'Please enter your exam token to continue';
-        
-        modal.classList.remove('hidden');
-        document.getElementById('modalToken').focus();
-    }
-
-    function closeTokenModal() {
-        document.getElementById('tokenModal').classList.add('hidden');
-        document.getElementById('modalToken').value = '';
-        currentExamId = null;
-    }
-
-    function showTokenInput(examId, examTitle) {
-        showTokenModal(examId, examTitle);
-    }
-
-    function showExamDetails(examId) {
-        alert(`Show details for exam ${examId}`);
-    }
-
-    // ✅ FORMAT TOKEN INPUT (6 karakter alfanumerik, tanpa tanda "-")
+    // Format token input (6 characters, uppercase)
     function formatTokenInput(input) {
         let value = input.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
         if (value.length > 6) value = value.substring(0, 6);
         input.value = value;
     }
 
-    document.getElementById('modalToken')?.addEventListener('input', function() {
-        formatTokenInput(this);
-    });
+    // Copy token to clipboard
+    function copyToClipboard(token) {
+        navigator.clipboard.writeText(token).then(() => {
+            showNotification('Token copied to clipboard!', 'success');
+        }).catch(() => {
+            showNotification('Failed to copy token', 'error');
+        });
+    }
 
-    document.getElementById('quickToken')?.addEventListener('input', function() {
-        formatTokenInput(this);
-    });
+    // Start exam with token
+    function startExamWithToken(token) {
+        showLoading();
+        validateToken(token);
+    }
 
-    // ✅ VALIDASI TOKEN UTAMA (modal)
-    function validateToken() {
-        const token = document.getElementById('modalToken').value;
+    // Validate manual token entry
+    function validateManualToken() {
+        const token = document.getElementById('manualToken').value.trim();
+        
         if (token.length !== 6) {
-            alert('Please enter a valid 6-character token.');
+            showNotification('Please enter a valid 6-character token', 'error');
             return;
         }
+        
+        showLoading();
+        validateToken(token);
+    }
 
-        const validateBtn = document.querySelector('#tokenModal button:last-child');
-        validateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Validating...';
-        validateBtn.disabled = true;
-
+    // Validate token via API
+    function validateToken(token) {
         fetch('{% url "exam:validate_exam_token" %}', {
             method: 'POST',
             headers: {
@@ -520,69 +321,121 @@ function showCopiedMessage() {
         })
         .then(response => response.json())
         .then(data => {
+            hideLoading();
             if (data.valid) {
-                window.location.href = '{% url "exam:take_exam" 0 %}'.replace('0', data.exam_id);
+                showNotification('Token validated! Redirecting to exam...', 'success');
+                setTimeout(() => {
+                    window.location.href = '{% url "exam:take_exam" 0 %}'.replace('0', data.exam_id);
+                }, 1000);
             } else {
-                alert('Error: ' + data.message);
-                validateBtn.innerHTML = 'Validate Token';
-                validateBtn.disabled = false;
+                showNotification('Error: ' + data.message, 'error');
             }
         })
         .catch(error => {
-            alert('Validation failed. Please try again.');
-            validateBtn.innerHTML = 'Validate Token';
-            validateBtn.disabled = false;
+            hideLoading();
+            showNotification('Validation failed. Please try again.', 'error');
         });
     }
 
-    // ✅ VALIDASI TOKEN CEPAT (input atas)
-    function validateQuickToken() {
-        const token = document.getElementById('quickToken').value;
-        if (token.length !== 6) {
-            alert('Please enter a valid 6-character token.');
-            return;
+    // Show exam details (placeholder)
+    function showExamDetails(examId) {
+        // Implement exam details modal or redirect
+        window.location.href = '{% url "exam:exam_details" 0 %}'.replace('0', examId);
+    }
+
+    // Update countdown timers
+    function updateCountdowns() {
+        {% for token in active_tokens %}
+        const countdownElement = document.getElementById('countdown-{{ token.id }}');
+        const progressElement = document.getElementById('progress-{{ token.id }}');
+        
+        if (countdownElement && progressElement) {
+            // This would need server-side calculation for accurate countdown
+            // For now, we'll just update the display
+            countdownElement.textContent = '{{ token.time_remaining }}';
         }
-
-        fetch('{% url "exam:validate_exam_token" %}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: JSON.stringify({ token: token })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.valid) {
-                window.location.href = '{% url "exam:take_exam" 0 %}'.replace('0', data.exam_id);
-            } else {
-                alert('Error: ' + data.message);
-            }
-        })
-        .catch(error => {
-            alert('Validation failed. Please try again.');
-        });
+        {% endfor %}
     }
 
-    // ✅ Tutup modal saat klik luar atau tekan ESC
-    document.getElementById('tokenModal')?.addEventListener('click', function(e) {
-        if (e.target === this) closeTokenModal();
-    });
+    // Update current time
+    function updateCurrentTime() {
+        const now = new Date();
+        document.getElementById('current-time').textContent = 
+            now.toLocaleDateString('en-US', { 
+                month: 'long', 
+                day: 'numeric', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+    }
 
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') closeTokenModal();
-    });
+    // Refresh token data
+    function refreshTokenData() {
+        fetch('{% url "exam:get_active_tokens" %}')
+            .then(response => response.json())
+            .then(data => {
+                if (data.tokens.length !== {{ active_tokens.count }}) {
+                    // If token count changed, reload the page
+                    window.location.reload();
+                }
+            })
+            .catch(error => console.error('Error refreshing tokens:', error));
+    }
 
-    // ✅ Update placeholder & batas input
+    // Show/hide loading spinner
+    function showLoading() {
+        document.getElementById('loadingSpinner').classList.remove('hidden');
+    }
+
+    function hideLoading() {
+        document.getElementById('loadingSpinner').classList.add('hidden');
+    }
+
+    // Show notification
+    function showNotification(message, type) {
+        const notification = document.createElement('div');
+        notification.className = `fixed top-6 right-6 px-6 py-3 rounded-lg shadow-lg text-white font-semibold z-50 ${
+            type === 'success' ? 'bg-green-500' : 'bg-red-500'
+        }`;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
+    }
+
+    // Auto-refresh functionality
     document.addEventListener('DOMContentLoaded', function() {
-        const inputs = document.querySelectorAll('input[type="text"][id*="Token"]');
-        inputs.forEach(input => {
-            input.placeholder = 'e.g., A1B2C3';
-            input.maxLength = 6;
-        });
+        // Update time every second
+        setInterval(updateCurrentTime, 1000);
+        
+        // Update countdowns every 30 seconds
+        setInterval(updateCountdowns, 30000);
+        
+        // Refresh token data every minute
+        setInterval(refreshTokenData, 60000);
+        
+        // Auto-focus manual token input
+        document.getElementById('manualToken')?.focus();
     });
 
-    console.log('My Exams page initialized');
-</script>
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        // Ctrl/Cmd + K to focus token input
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+            e.preventDefault();
+            document.getElementById('manualToken').focus();
+        }
+        
+        // Enter to validate token when input is focused
+        if (e.key === 'Enter' && document.activeElement.id === 'manualToken') {
+            validateManualToken();
+        }
+    });
 
-    {% endblock %}
+    console.log('Exam Access portal initialized');
+</script>
+{% endblock %}
