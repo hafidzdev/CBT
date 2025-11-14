@@ -46,6 +46,7 @@ urlpatterns = [
     path('download-template/', views.download_question_bank_template, name='download_question_bank_template'),
     path('teacher/exams/create/', views.create_exam, name='create_exam'),
     path('get-active-tokens/', views.get_active_tokens, name='get_active_tokens'),
+
     # ===== ADMIN ROUTES =====
     path('admin/dashboard/', views.admin_dashboard, name='admin_dashboard'),
     path('stats/', views.admin_stats, name='admin_stats'),
@@ -64,10 +65,11 @@ urlpatterns = [
     path('admin/users/<int:user_id>/delete/', views.user_management_delete, name='admin_user_delete'),
     path('admin/users/download-template/', views.download_user_template, name='admin_user_download'),
 
+    # token management actions
+    path('admin/tokens/refresh/<int:token_id>/', views.refresh_token, name='refresh_token'),
+    path('admin/tokens/export/', views.export_tokens, name='export_tokens'),
+    path('admin/tokens/bulk-generate/', views.bulk_generate_tokens, name='bulk_generate_tokens'),
 
-
-
-   
     # ===== FALLBACK REDIRECTS =====
     path('teacher/', lambda request: redirect('exam:teacher_dashboard')),
     path('student/', lambda request: redirect('exam:my-exams')),
